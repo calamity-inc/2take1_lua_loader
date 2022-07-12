@@ -2,6 +2,8 @@ util.require_natives(1651208000)
 util.keep_running()
 stand = menu
 
+package.path = package.path .. ";" .. filesystem.stand_dir() .. "From 2Take1Menu\\scripts\\?.lua"
+
 local config = {
 	spoof_2take1_install_dir = true
 }
