@@ -179,6 +179,15 @@ local v3_meta = {
 }
 
 v3 = function (x, y, z)
+	if x == nil then
+		x = 0.0
+	end
+	if y == nil then
+		y = 0.0
+	end
+	if z == nil then
+		z = 0.0
+	end
 	local vec =
 	{	x = x, y = y or x, z = z or x,
 
