@@ -780,6 +780,11 @@ menu = {
 	create_thread = util.create_thread,
 	is_trusted_mode_enabled = function ()
 		return true
+	end,
+	get_version = function ()
+		-- only instance I can see of this being used: "Meteor v1.5.0 for 2Take1 v" .. menu.get_version()
+		-- will need a more reasonable value if any script does version comparisons
+		return "STANDONTOP"
 	end
 }
 
