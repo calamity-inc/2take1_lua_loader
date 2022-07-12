@@ -811,7 +811,7 @@ utils = {
 	end,
 	file_exists = filesystem.exists,
 	dir_exists = filesystem.is_dir,
-	make_dir = filesystem.mkdir,
+	make_dir = filesystem.mkdirs,
 	get_appdata_path = function (dir, file)
 		if config.spoof_2take1_install_dir and dir == "PopstarDevs" and file == "2Take1Menu" then
 			return	filesystem.stand_dir() .. "From 2Take1Menu\\"
