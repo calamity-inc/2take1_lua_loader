@@ -2079,6 +2079,37 @@ hook = {
 	end
 }
 
+native = {
+	call = function(hash, ...)
+		local args = { ... }
+		native_invoker.begin_call()
+		for _, arg in ipairs(args) do
+			pluto_switch type(arg) do
+				pluto_case "int":
+				native_invoker.push_arg_int(arg)
+				break
+
+				pluto_case "number":
+				local i, f = math.modf(arg)
+				if f == 0 then
+					native_invoker.push_arg_int(arg)
+				else
+					native_invoker.push_arg_float(arg)
+				end
+				break
+
+				pluto_case "boolean":
+				native_invoker.push_arg_bool(arg)
+				break
+
+				pluto_default:
+				error("Unsupported argument for native.call: " .. type(arg) .. " " .. tostring(arg))
+			end
+		end
+		native_invoker.end_call(string.format("%X", hash))
+	end
+}
+
 local fucky_meta = {
 	__newindex=function ()
 	end
@@ -2106,6 +2137,7 @@ setmetatable(ai, fucky_meta)
 setmetatable(cam, fucky_meta)
 setmetatable(fire, fucky_meta)
 setmetatable(hook, fucky_meta)
+setmetatable(native, fucky_meta)
 
 -- checked by 2take1script to make sure the script is loaded via 2take1
 -- they might replace this check in a future version, in which case, feel free to use the files from the "From 2Take1Menu" folder in this repository
