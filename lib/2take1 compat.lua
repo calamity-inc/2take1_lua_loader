@@ -2068,6 +2068,15 @@ decorator = {
 	decor_set_time = DECORATOR.DECOR_SET_TIME,
 }
 
+hook = {
+	register_script_event_hook = function(...)
+		-- silently ignore this
+	end,
+	register_net_event_hook = function(...)
+		-- silently ignore this
+	end
+}
+
 local fucky_meta = {
 	__newindex=function ()
 	end
@@ -2094,6 +2103,7 @@ setmetatable(streaming, fucky_meta)
 setmetatable(ai, fucky_meta)
 setmetatable(cam, fucky_meta)
 setmetatable(fire, fucky_meta)
+setmetatable(hook, fucky_meta)
 
 -- checked by 2take1script to make sure the script is loaded via 2take1
 -- they might replace this check in a future version, in which case, feel free to use the files from the "From 2Take1Menu" folder in this repository
