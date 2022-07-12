@@ -848,9 +848,7 @@ utils = {
 		for i, value in ipairs(vec) do
 			memory.write_long(mem+(8 * (i -1)), value)
 		end
-		local result = memory.read_string(mem)
-		memory.free(mem)
-		return result
+		return memory.read_string(mem)
 	end
 }
 
@@ -962,7 +960,6 @@ player = {
 		local ent = memory.alloc_int()
 		PLAYER.GET_ENTITY_PLAYER_IS_FREE_AIMING_AT(pid, ent)
 		local result = memory.read_int(ent)
-		memory.free(ent)
 		return result
 	end,
 	get_personal_vehicle = entities.get_user_personal_vehicle_as_handle,
@@ -1252,7 +1249,6 @@ entity = {
 		local ent_ptr = memory.alloc_int()
 		memory.write_int(ent_ptr, ent)
 		ENTITY.SET_ENTITY_AS_NO_LONGER_NEEDED(ent_ptr)
-		memory.free(ent_ptr)
 	end,
 	set_entity_no_collsion_entity = ENTITY.SET_ENTITY_NO_COLLISION_ENTITY,
 	freeze_entity = ENTITY.FREEZE_ENTITY_POSITION,
@@ -1314,21 +1310,18 @@ stats = {
 		local value_ptr = memory.alloc_int()
 		local state = STATS.STAT_GET_INT(hash, value_ptr, unk)
 		local value = memory.read_int(value_ptr)
-		memory.free(value_ptr)
 		return value, state
 	end,
 	stat_get_float = function (hash, unk)
 		local value_ptr = memory.alloc_int()
 		local state = STATS.STAT_GET_FLOAT(hash, value_ptr, unk)
 		local value = memory.read_float(value_ptr)
-		memory.free(value_ptr)
 		return value, state
 	end,
 	stat_get_bool = function (hash, unk)
 		local value_ptr = memory.alloc_int()
 		local state = STATS.STAT_GET_BOOl(hash, value_ptr, unk)
 		local value = memory.read_bool(value_ptr)
-		memory.free(value_ptr)
 		return value, state
 	end,
 	stat_set_int = STATS.STAT_SET_INT,
@@ -1528,7 +1521,6 @@ vehicle = {
 		local colour_ptr = memory.alloc(12)
 		VEHICLE._GET_VEHICLE_NEON_LIGHTS_COLOUR(veh, colour_ptr, colour_ptr + 4, colour_ptr + 8)
 		local colour = RGBAToInt(memory.read_byte(colour_ptr), memory.read_byte(colour_ptr + 4), memory.read_byte(colour_ptr + 8), 255)
-		memory.free(colour_ptr)
 		return colour
 	end,
 	set_vehicle_neon_light_enabled = VEHICLE._SET_VEHICLE_NEON_LIGHT_ENABLED,
@@ -1572,14 +1564,12 @@ vehicle = {
 		local a, b = memory.alloc_int(), memory.alloc_int()
 		VEHICLE.GET_VEHICLE_COLOURS(veh, a, b)
 		local colour = memory.read_int(a)
-		memory.free(a) memory.free(b)
 		return colour
 	end,
 	get_vehicle_secondary_color = function (veh)
 		local a, b = memory.alloc_int(), memory.alloc_int()
 		VEHICLE.GET_VEHICLE_COLOURS(veh, a, b)
 		local colour = memory.read_int(b)
-		memory.free(a) memory.free(b)
 		return colour
 	end,
 	get_vehicle_pearlecent_color = function (veh)
@@ -1753,7 +1743,6 @@ rope = {
 		local rope_ptr = memory.alloc_int()
 		memory.write_int(rope_ptr, rope)
 		PHYSICS.DELETE_ROPE(rope_ptr)
-		memory.free(rope_ptr)
 	end,
 	attach_rope_to_entity = function (rope, e, offset, a3)
 		PHYSICS.ATTACH_ROPE_TO_ENTITY(rope, e, offset.x, offset.y, offset.z, a3)
@@ -1872,7 +1861,6 @@ graphics = {
 		local x_ptr, y_ptr = memory.alloc_int(), memory.alloc_int()
 		local status = GRAPHICS.GET_SCREEN_COORD_FROM_WORLD_COORD(coord.x, coord.y, coord.z, x_ptr, y_ptr)
 		local x, y = memory.read_float(x_ptr), memory.read_float(y_ptr)
-		memory.free(x) memory.free(y)
 		return status, v2(x, y)
 	end,
 	}
