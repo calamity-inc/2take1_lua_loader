@@ -813,16 +813,21 @@ utils = {
 	dir_exists = filesystem.is_dir,
 	make_dir = filesystem.mkdirs,
 	get_appdata_path = function (dir, file)
-		if config.spoof_2take1_install_dir and dir == "PopstarDevs" and file == "2Take1Menu" then
-			return	filesystem.stand_dir() .. "From 2Take1Menu\\"
+		if dir[-1] == "\\" then
+			dir = dir:sub(1, -2)
 		end
-		local file = filesystem.appdata_dir()..dir.."\\"..file
-		if filesystem.exists(file) then
-			return file
+		if file ~= "" then
+			dir ..= "\\"..file
+		end
+		if config.spoof_2take1_install_dir and dir:sub(1, 22) == "PopstarDevs\\2Take1Menu" then
+			dir = filesystem.stand_dir() .. "From 2Take1Menu\\" .. dir:sub(24)
 		else
-			filesystem.mkdir(file)
-			return file
+			dir = filesystem.appdata_dir() .. dir
 		end
+		if not filesystem.exists(dir) then
+			filesystem.mkdir(dir)
+		end
+		return dir
 	end,
 	from_clipboard = util.get_clipboard_text,
 	to_clipboard = util.copy_to_clipboard,
