@@ -1093,7 +1093,7 @@ ped = {
 	is_ped_shooting = PED.IS_PED_SHOOTING,
 	get_ped_bone_index = PED.GET_PED_BONE_INDEX,
 	get_ped_bone_coords = function (ped, boneindex, offset)
-		return PED.GET_PED_BONE_COORDS(ped, boneindex, offset.x, offset.y, offset.z)
+		return true, PED.GET_PED_BONE_COORDS(ped, boneindex, offset.x, offset.y, offset.z)
 	end,
 	get_ped_relationship_group_hash = PED.GET_PED_RELATIONSHIP_GROUP_HASH,
 	set_ped_relationship_group_hash = PED.SET_PED_RELATIONSHIP_GROUP_HASH,
