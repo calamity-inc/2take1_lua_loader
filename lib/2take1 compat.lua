@@ -2093,4 +2093,14 @@ setmetatable(ai, fucky_meta)
 setmetatable(cam, fucky_meta)
 setmetatable(fire, fucky_meta)
 
+-- checked by 2take1script to make sure the script is loaded via 2take1
+-- they might replace this check in a future version, in which case, feel free to use the files from the "From 2Take1Menu" folder in this repository
+local og_tostring = tostring
+tostring = function(v)
+	if type(v) == "table" and #v == 0 then
+		return "[]"
+	end
+	return og_tostring(v)
+end
+
 return config
