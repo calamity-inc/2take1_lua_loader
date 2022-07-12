@@ -1863,7 +1863,11 @@ graphics = {
 	set_checkpoint_icon_rgba = 	GRAPHICS.SET_CHECKPOINT_RGBA2,
 	delete_checkpoint = GRAPHICS.DELETE_CHECKPOINT,
 	has_scaleform_movie_loaded = GRAPHICS.HAS_SCALEFORM_MOVIE_LOADED,
-	set_scaleform_movie_as_no_longer_needed = GRAPHICS.SET_SCALEFORM_MOVIE_AS_NO_LONGER_NEEDED,
+	set_scaleform_movie_as_no_longer_needed = function(h)
+		local pH = memory.alloc_int()
+		memory.write_int(pH, h)
+		GRAPHICS.SET_SCALEFORM_MOVIE_AS_NO_LONGER_NEEDED(pH)
+	end,
 	project_3d_coord = function (coord)
 		local x_ptr, y_ptr = memory.alloc_int(), memory.alloc_int()
 		local status = GRAPHICS.GET_SCREEN_COORD_FROM_WORLD_COORD(coord.x, coord.y, coord.z, x_ptr, y_ptr)
