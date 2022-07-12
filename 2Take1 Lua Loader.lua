@@ -8,7 +8,9 @@ end
 local function init()
 	stand.action(stand.my_root(), "Reset State", {}, "", function()
 		-- reset stand runtime
-		util.reset_state()
+		util.stop_all_threads()
+		util.keep_running()
+		util.clear_commands_and_event_handlers()
 		-- reset global vars to avoid scripts crying about already being loaded
 		for k, v in pairs(_G) do
 			if og_g_keys[k] == nil then
@@ -16,7 +18,6 @@ local function init()
 			end
 		end
 		-- reinit
-		util.keep_running()
 		init()
 	end)
 
