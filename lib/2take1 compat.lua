@@ -1250,7 +1250,9 @@ entity = {
 	apply_force_to_entity = ENTITY.APPLY_FORCE_TO_ENTITY,
 	get_entity_attached_to = ENTITY.GET_ENTITY_ATTACHED_TO,
 	detach_entity = ENTITY.DETACH_ENTITY,
-	get_entity_model_hash = ENTITY.GET_ENTITY_MODEL,
+	get_entity_model_hash = function (veh)
+		return int_to_uint(ENTITY.GET_ENTITY_MODEL(veh))
+	end,
 	get_entity_heading = ENTITY.GET_ENTITY_HEADING,
 	attach_entity_to_entity = function (subject,  target,  boneIndex,  offset,  rot,  softPinning,  collision,  isPed,  vertexIndex,  fixedRot)
 		ENTITY.ATTACH_ENTITY_TO_ENTITY(subject, target, boneIndex, offset.x, offset.y, offset.z, rot.x, rot.y, rot.z, false,  softPinning, collision, isPed, vertexIndex, fixedRot)
