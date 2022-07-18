@@ -791,9 +791,7 @@ menu = {
 		return true
 	end,
 	get_version = function ()
-		-- only instance I can see of this being used: "Meteor v1.5.0 for 2Take1 v" .. menu.get_version()
-		-- will need a more reasonable value if any script does version comparisons
-		return "STANDONTOP"
+		return "2.62.1"
 	end
 }
 
