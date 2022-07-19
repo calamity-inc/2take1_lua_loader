@@ -14,6 +14,9 @@ local async_http = _G["async_http"]; _G["async_http"] = nil
 local memory = _G["memory"]; _G["memory"] = nil
 local profiling = _G["profiling"]; _G["profiling"] = nil
 
+-- you wouldn't fork a lua
+_PVERSION=nil;newuserdata=nil;io.isdir=nil;io.isfile=nil;io.exists=nil;io.copyto=nil;io.filesize=nil;io.makedir=nil;io.absolute=nil;os.millis=nil;os.nanos=nil;os.seconds=nil;os.unixseconds=nil;string.split=nil;string.lfind=nil;string.rfind=nil;string.strip=nil;string.lstrip=nil;string.rstrip=nil;string.isascii=nil;string.islower=nil;string.isalpha=nil;string.isupper=nil;string.isalnum=nil;string.contains=nil;string.casefold=nil;string.partition=nil;string.endswith=nil;string.startswith=nil;string.find_last_of=nil;string.find_first_of=nil;string.iswhitespace=nil;string.find_last_not_of=nil;string.find_first_not_of=nil;table.freeze=nil;table.isfrozen=nil;table.contains=nil;
+
 package.path = package.path .. ";" .. filesystem.stand_dir() .. "From 2Take1Menu\\scripts\\?.lua"
 
 local config = {
