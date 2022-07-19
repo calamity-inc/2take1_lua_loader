@@ -1,3 +1,4 @@
+local stand = menu
 local config = require("2take1 compat")
 
 local og_g_keys = {}
