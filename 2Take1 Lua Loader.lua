@@ -11,6 +11,7 @@ end
 local function init()
 	stand.action(stand.my_root(), "Reset State", {}, "", function()
 		-- reset stand runtime
+		util.dispatch_on_stop()
 		util.stop_all_threads()
 		util.keep_running()
 		util.clear_commands_and_event_handlers()
