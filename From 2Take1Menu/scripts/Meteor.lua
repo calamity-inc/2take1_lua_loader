@@ -40,8 +40,8 @@ for i = 1, #require_files do
 	end
 end
 
-Meteor = "Meteor v1.6.0"
-MeteorVer = "1.6.0"
+Meteor = "Meteor v1.6.1"
+MeteorVer = "1.6.1"
 
 do
 	if not utils.dir_exists(utils.get_appdata_path("PopstarDevs", "2Take1Menu").."\\scripts\\MeteorConfig\\Logs") then
@@ -349,6 +349,10 @@ local SessionBrokenGameServerModify = false
 local SessionBrokenModifiedWeather = false
 
 local ChatCommandPrefix = settings["» Chat Command Prefix"].Value or "!"
+
+if menu.get_version() == "STANDONTOP" then
+	ped.reset_ped_ragdoll_blocking_flags(player.get_player_ped(player.player_id()), -1)
+end
 
 if eventhooks["» Main Script Event Hook"] == nil then
 	eventhooks["» Main Script Event Hook"] = hook.register_script_event_hook(function(source, target, params, count)
@@ -1966,49 +1970,38 @@ feature["» Hands Up"] = menu.add_feature("» Hands Up", "value_str", localparen
 			system.yield(50)
 			if player.is_player_free_aiming(player.player_id()) and not player.is_player_in_any_vehicle(player.player_id()) and not ped.is_ped_shooting(player.get_player_ped(player.player_id())) then
 				local entity_ = player.get_entity_player_is_aiming_at(player.player_id())
-				if entity.is_entity_a_ped(entity_) and not ped.is_ped_in_any_vehicle(entity_) and not entity.is_entity_dead(entity_) and utilities.get_distance_between(player.get_player_ped(player.player_id()), entity_) < 15 then
+				if entity.is_entity_a_ped(entity_) and not ped.is_ped_in_any_vehicle(entity_) and not entity.is_entity_dead(entity_) and utilities.get_distance_between(player.get_player_ped(player.player_id()), entity_) < 10 then
 					if ped.get_ped_relationship_group_hash(entity_) == gameplay.get_hash_key("COP") or ped.is_ped_a_player(entity_) or entity.get_entity_model_hash(entity_) == 416176080 or entity.get_entity_model_hash(entity_) == 0xCE5FF074 or entity.get_entity_model_hash(entity_) == 0x573201B8 or entity.get_entity_model_hash(entity_) == 0xAAB71F62 or entity.get_entity_model_hash(entity_) == 0xA8683715 or entity.get_entity_model_hash(entity_) == 0x14EC17EA or entity.get_entity_model_hash(entity_) == 0x3DF40FC1 or entity.get_entity_model_hash(entity_) == 0x56E29962 or entity.get_entity_model_hash(entity_) == 0xFCFA9E1E or entity.get_entity_model_hash(entity_) == 0x644AC75E or entity.get_entity_model_hash(entity_) == 0x18012A9F or entity.get_entity_model_hash(entity_) == 0xD86B5A95 or entity.get_entity_model_hash(entity_) == 0x8BBAB455 or entity.get_entity_model_hash(entity_) == 0x2FD800B7 or entity.get_entity_model_hash(entity_) == 0x6AF51FAF or entity.get_entity_model_hash(entity_) == 0x471BE4B2 or entity.get_entity_model_hash(entity_) == 0x4E8F95A2 or entity.get_entity_model_hash(entity_) == 0x8D8AC8B9 or entity.get_entity_model_hash(entity_) == 0x1250D7BA or entity.get_entity_model_hash(entity_) == 0xE71D5E68 or entity.get_entity_model_hash(entity_) == 0xB11BAB56 or entity.get_entity_model_hash(entity_) == 0x6A20728 or entity.get_entity_model_hash(entity_) == 0x431D501C or entity.get_entity_model_hash(entity_) == 0x6D362854 or entity.get_entity_model_hash(entity_) == 0xDFB55C81 or entity.get_entity_model_hash(entity_) == 0xC3B52966 or entity.get_entity_model_hash(entity_) == 0x349F33E1 or entity.get_entity_model_hash(entity_) == 0xC2D06F53 or entity.get_entity_model_hash(entity_) == 0x9563221D or entity.get_entity_model_hash(entity_) == 0xD3939DFD or entity.get_entity_model_hash(entity_) == 0x3C831724 or entity.get_entity_model_hash(entity_) == 0x6C3F072 or entity.get_entity_model_hash(entity_) == 0x431FC24C or entity.get_entity_model_hash(entity_) == 0xA148614D or entity.get_entity_model_hash(entity_) == 0xAD7844BB or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 3125143736 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 2725352035 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 4256991824 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 2874559379 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 741814745 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 2481070269 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 883325847 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 101631238 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 615608432 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 3126027122 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 2694266206 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 3125143736 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 1233104067 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 126349499 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 600439132 or ped.get_current_ped_weapon(player.get_player_ped(player.player_id())) == 406929569 or ped.get_current_ped_weapon(entity_) == 2138347493 or ped.get_current_ped_weapon(entity_) == 1119849093 or ped.get_current_ped_weapon(entity_) == 2982836145 or ped.get_current_ped_weapon(entity_) == 2726580491 or ped.get_current_ped_weapon(entity_) == 1672152130 or ped.get_current_ped_weapon(entity_) == 1834241177 or ped.get_current_ped_weapon(entity_) == 125959754 or ped.get_current_ped_weapon(entity_) == 3676729658 or ped.get_current_ped_weapon(entity_) == 3056410471 then
 					else
-						if f.value == 0 then
-							threads["» Hands Up"] = menu.create_thread(function()
-								system.yield(200)
-								streaming.request_anim_dict("mp_am_hold_up")
-								streaming.request_anim_set("handsup_base")
-								network.request_control_of_entity(entity_)
-								if streaming.has_anim_dict_loaded("mp_am_hold_up") then
-									ai.task_play_anim(entity_, "mp_am_hold_up", "handsup_base", 1, 0, -1, 9, 0, false, false, false)
+						if natives.IS_ENTITY_PLAYING_ANIM(entity_, "mp_am_hold_up", "handsup_base", 3):__tointeger() == 0 and natives.IS_ENTITY_PLAYING_ANIM(entity_, "random@arrests@busted", "idle_c", 3):__tointeger() == 0 and natives.IS_ENTITY_PLAYING_ANIM(entity_, "random@arrests", "kneeling_arrest_idle", 3):__tointeger() == 0 then
+							if natives.HAS_ENTITY_CLEAR_LOS_TO_ENTITY_IN_FRONT(entity_, player.get_player_ped(player.player_id())):__tointeger() == 1 then
+								if f.value == 0 then
+									streaming.request_anim_dict("mp_am_hold_up")
+									streaming.request_anim_set("handsup_base")
+									network.request_control_of_entity(entity_)
+									if streaming.has_anim_dict_loaded("mp_am_hold_up") then
+										ai.task_play_anim(entity_, "mp_am_hold_up", "handsup_base", 1, 0, -1, 9, 0, false, false, false)
+									end
+								elseif f.value == 1 then
+									streaming.request_anim_dict("random@arrests@busted")
+									streaming.request_anim_set("idle_c")
+									network.request_control_of_entity(entity_)
+									if streaming.has_anim_dict_loaded("random@arrests@busted") then
+										ai.task_play_anim(entity_, "random@arrests@busted", "idle_c", 1, 0, -1, 9, 0, false, false, false)
+									end
+								elseif f.value == 2 then
+									streaming.request_anim_dict("random@arrests")
+									streaming.request_anim_set("kneeling_arrest_idle")
+									network.request_control_of_entity(entity_)
+									if streaming.has_anim_dict_loaded("random@arrests") then
+										ai.task_play_anim(entity_, "random@arrests", "kneeling_arrest_idle", 1, 0, -1, 9, 0, false, false, false)
+									end
 								end
-							end, nil)
-						elseif f.value == 1 then
-							threads["» Hands Up"] = menu.create_thread(function()
-								system.yield(200)
-								streaming.request_anim_dict("random@arrests@busted")
-								streaming.request_anim_set("idle_c")
-								network.request_control_of_entity(entity_)
-								if streaming.has_anim_dict_loaded("random@arrests@busted") then
-									ai.task_play_anim(entity_, "random@arrests@busted", "idle_c", 1, 0, -1, 9, 0, false, false, false)
-								end
-							end, nil)
-						elseif f.value == 2 then
-							threads["» Hands Up"] = menu.create_thread(function()
-								system.yield(200)
-								streaming.request_anim_dict("random@arrests")
-								streaming.request_anim_set("kneeling_arrest_idle")
-								network.request_control_of_entity(entity_)
-								if streaming.has_anim_dict_loaded("random@arrests") then
-									ai.task_play_anim(entity_, "random@arrests", "kneeling_arrest_idle", 1, 0, -1, 9, 0, false, false, false)
-								end
-							end, nil)
+							end
 						end
 					end
-					system.wait(300)
 				end
 			end
-		end
-	end
-	if not f.on then
-		if threads["» Hands Up"] then
-			menu.delete_thread(threads["» Hands Up"])
 		end
 	end
 	settings["» Hands Up"].Enabled = f.on
@@ -4588,27 +4581,27 @@ feature["» RGB Neons"] = menu.add_feature("» RGB Neons", "slider", localparent
 			vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(255, 5, 5))
 			for i = 5, 255 do
 				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(255, i, 5))
-				system.wait(10)
+				system.wait(f.value)
 			end
 			for i = 255, 5, -1 do
 				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(i, 255, 5))
-				system.wait(10)
+				system.wait(f.value)
 			end
 			for i = 5, 255 do
 				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(5, 255, i))
-				system.wait(10)
+				system.wait(f.value)
 			end
 			for i = 255, 5, -1 do
 				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(5, i, 255))
-				system.wait(10)
+				system.wait(f.value)
 			end
 			for i = 5, 255 do
 				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(i, 5, 255))
-				system.wait(10)
+				system.wait(f.value)
 			end
 			for i = 255, 5, -1 do
 				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(255, 5, i))
-				system.wait(10)
+				system.wait(f.value)
 			end
 		end
 	end
@@ -10897,7 +10890,7 @@ feature["» Quick Entity Actions"] = menu.add_feature("» Quick Entity Actions",
 						utilities.request_control_silent(controls_entity_aimed_at)
 						vehicle.set_vehicle_engine_health(controls_entity_aimed_at, -1.0)
 						natives.SET_VEHICLE_PETROL_TANK_HEALTH(controls_entity_aimed_at, -1.0)
-						for i = 1, 12 do
+						for i = 1, 50 do
 							fire.add_explosion(entity.get_entity_coords(controls_entity_aimed_at) + v3(0, 0, 1), 3, true, false, 0, 0)
 							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("engine")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
 							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("overheat")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
@@ -10967,7 +10960,7 @@ feature["» Quick Entity Actions"] = menu.add_feature("» Quick Entity Actions",
 						utilities.request_control_silent(controls_entity_aimed_at)
 						vehicle.set_vehicle_engine_health(controls_entity_aimed_at, -1.0)
 						natives.SET_VEHICLE_PETROL_TANK_HEALTH(controls_entity_aimed_at, -1.0)
-						for i = 1, 12 do
+						for i = 1, 50 do
 							fire.add_explosion(entity.get_entity_coords(controls_entity_aimed_at) + v3(0, 0, 1), 3, true, false, 0, 0)
 							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("engine")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
 							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("overheat")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
@@ -12204,7 +12197,6 @@ menu.add_feature("» Announce Richest Player", "action", localparents["» Chat O
 			return (script_func.get_player_money(a) > script_func.get_player_money(b))
 		end)
 		if player_table[1] ~= nil then
-			menu.notify()
 			network.send_chat_message(player.get_player_name(player_table[1]) .. " is the richest player in the session with " .. script_func.get_player_money_str(player_table[1]) .. "!", false)
 		end
 	end
@@ -13718,7 +13710,7 @@ feature["» Super Run Detection"] = menu.add_feature("» Super Run", "value_str"
 			if network.is_session_started() then
 				for pid = 0, 31 do
 					if player.is_player_valid(pid) then
-						if entity.get_entity_speed(player.get_player_ped(pid)) > 36 and utilities.get_distance_between(player.get_player_coords(player.player_id()), player.get_player_coords(pid)) < 800 and natives.GET_ENTITY_HEIGHT_ABOVE_GROUND(player.get_player_ped(pid)):__tonumber() > 0.0 and natives.GET_ENTITY_HEIGHT_ABOVE_GROUND(player.get_player_ped(pid)):__tonumber() < 1.2 and natives.IS_PED_JUMPING_OUT_OF_VEHICLE(player.get_player_ped(pid)):__tointeger() == 0 and natives.IS_PED_FALLING(player.get_player_ped(pid)):__tointeger() == 0 and natives.IS_PED_IN_PARACHUTE_FREE_FALL(player.get_player_ped(pid)):__tointeger() == 0 and player_func.is_player_moving(pid) and not ai.is_task_active(player.get_player_ped(pid), 422) and not player.is_player_in_any_vehicle(pid) and not ped.is_ped_ragdoll(player.get_player_ped(pid)) and not player_func.is_player_in_interior(pid) then
+						if entity.get_entity_speed(player.get_player_ped(pid)) > 64 and utilities.get_distance_between(player.get_player_coords(player.player_id()), player.get_player_coords(pid)) < 800 and natives.GET_ENTITY_HEIGHT_ABOVE_GROUND(player.get_player_ped(pid)):__tonumber() > 0.0 and natives.GET_ENTITY_HEIGHT_ABOVE_GROUND(player.get_player_ped(pid)):__tonumber() < 1.2 and natives.IS_PED_JUMPING_OUT_OF_VEHICLE(player.get_player_ped(pid)):__tointeger() == 0 and natives.IS_PED_FALLING(player.get_player_ped(pid)):__tointeger() == 0 and natives.IS_PED_IN_PARACHUTE_FREE_FALL(player.get_player_ped(pid)):__tointeger() == 0 and player_func.is_player_moving(pid) and not ai.is_task_active(player.get_player_ped(pid), 422) and not player.is_player_in_any_vehicle(pid) and not ped.is_ped_ragdoll(player.get_player_ped(pid)) and not player_func.is_player_in_interior(pid) then
 							if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(pid)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(pid)) then
 							else
 								if pid ~= player.player_id() and player.is_player_valid(pid) and not player.is_player_modder(pid, custommodderflags["Super Run"]) then
@@ -13749,6 +13741,7 @@ feature["» Lobby Spoof Detection"] = menu.add_feature("» Lobby Spoof", "value_
 	settings["» Lobby Spoof Detection"].Enabled = f.on
 	settings["» Lobby Spoof Detection"].Value = f.value
 	if f.on then
+		local PlayerIDs = {}
 		local PlayerNames = {}
 		local PlayerSCIDs = {}
 		while f.on do
@@ -13756,22 +13749,25 @@ feature["» Lobby Spoof Detection"] = menu.add_feature("» Lobby Spoof", "value_
 			if network.is_session_started() then
 				for pid = 0, 31 do
 					if player.is_player_valid(pid) then
+						table.insert(PlayerIDs, pid)
 						table.insert(PlayerNames, player.get_player_name(pid))
 						table.insert(PlayerSCIDs, player.get_player_scid(pid))
 					end
 				end
 				local name_entries = 0
 				for a = 1, #PlayerNames do
-					if PlayerNames[a] ~= nil and PlayerNames[a + 1] ~= nil then
-						if PlayerNames[a] == PlayerNames[a + 1] then
-							name_entries = name_entries + 1
+					if PlayerIDs[a] ~= nil and PlayerIDs[a] ~= player.player_id() then
+						if PlayerNames[a] ~= nil and PlayerNames[a + 1] ~= nil then
+							if PlayerNames[a] == PlayerNames[a + 1] then
+								name_entries = name_entries + 1
+							end
 						end
 					end
 				end
 				local scid_entries = 0
 				for a = 1, #PlayerSCIDs do
-					if PlayerSCIDs[a] ~= nil and PlayerSCIDs[a + 1] ~= nil then
-						if PlayerSCIDs[a] > 0 and PlayerSCIDs[a + 1] > 0 then
+					if PlayerIDs[a] ~= nil and PlayerIDs[a] ~= player.player_id() then
+						if PlayerSCIDs[a] ~= nil and PlayerSCIDs[a + 1] ~= nil then
 							if PlayerSCIDs[a] == PlayerSCIDs[a + 1] then
 								scid_entries = scid_entries + 1
 							end
@@ -23380,7 +23376,7 @@ do
 					graphics.begin_scaleform_movie_method(script_execute_scaleform, "SHOW_SHARD_WASTED_MP_MESSAGE")
 					graphics.draw_scaleform_movie_fullscreen(script_execute_scaleform, 255, 255, 255, 255, 0)
 					graphics.scaleform_movie_method_add_param_texture_name_string("Welcome")
-					graphics.scaleform_movie_method_add_param_texture_name_string("Meteor v1.6.0")
+					graphics.scaleform_movie_method_add_param_texture_name_string("Meteor v1.6.1")
 					graphics.end_scaleform_movie_method(script_execute_scaleform)
 				end
 			end, nil)
@@ -23392,7 +23388,7 @@ do
 end
 
 
-menu.notify("Loaded Script Successfully!\n\nMeteor v1.6.0 for 2Take1 v" .. menu.get_version() .. "", Meteor, 6, 0x00ff00)
+menu.notify("Loaded Script Successfully!\n\nMeteor v1.6.1 for 2Take1 v" .. menu.get_version() .. "", Meteor, 6, 0x00ff00)
 
 
 --	░█████╗░██████╗░███████╗██████╗░██╗████████╗░██████╗  ░█████╗░███╗░░██╗██████╗░  ██████╗░██╗░██████╗░  ████████╗██╗░░██╗░█████╗░███╗░░██╗██╗░░██╗░██████╗  ████████╗░█████╗░  ██╗
