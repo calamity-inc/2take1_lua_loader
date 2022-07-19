@@ -2,7 +2,7 @@ local natives = require("Meteor/Lib/Natives")
 
 local memory = {}
 
-function memory.is_script_entity(Entity)
+function memory.network_is_script_entity(Entity)
 	if Entity and entity.is_an_entity(Entity) then
 		if natives.NETWORK_GET_NETWORK_ID_FROM_ENTITY(Entity):__tointeger() ~= 0 then
 			return true
@@ -14,7 +14,7 @@ function memory.is_script_entity(Entity)
 	end
 end
 
-function memory.get_entity_net_id_no_migration(Entity)
+function memory.network_entity_to_net(Entity)
     if Entity and entity.is_an_entity(Entity) then
 		if entity.is_entity_a_ped(Entity) then
 			return natives.PED_TO_NET(Entity):__tointeger()
@@ -28,7 +28,7 @@ function memory.get_entity_net_id_no_migration(Entity)
     end
 end
 
-function memory.get_net_id_bitset(NetID, bitset)
+function memory.read_bitset(NetID, bitset)
 	if NetID then
 		return NetID >> bitset
 	end
@@ -38,7 +38,7 @@ function memory.get_entity_owner(Entity)
     if Entity and entity.is_an_entity(Entity) then
         if not ped.is_ped_a_player(Entity) then
 			if not network.has_control_of_entity(Entity) then
-				return memory.get_net_id_bitset(memory.get_entity_net_id_no_migration(Entity), 16)
+				return memory.read_bitset(memory.network_entity_to_net(Entity), 16)
 			else
 				return player.player_id()
 			end
@@ -50,9 +50,9 @@ end
 
 function memory.get_entity_creator(Entity)
     if Entity and entity.is_an_entity(Entity) then
-		if memory.is_script_entity(Entity) then
+		if memory.network_is_script_entity(Entity) then
 			if not network.has_control_of_entity(Entity) then
-				return memory.get_net_id_bitset(memory.get_entity_net_id_no_migration(Entity), 16)
+				return memory.read_bitset(memory.network_entity_to_net(Entity), 16)
 			else
 				return player.player_id()
 			end

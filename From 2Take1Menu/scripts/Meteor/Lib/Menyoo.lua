@@ -678,9 +678,11 @@ function xml_handler.spawn_vehicle(string_path, v3_pos, float_heading)
                         end
                         if attach_x_index and attach_y_index and attach_z_index and attach_rot_p_index and attach_rot_r_index and attach_rot_y_index then
                             if all_entities["" .. attach_handler .. ""] == nil then
-                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], main_ent, attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), true, true, entity.is_entity_a_ped(main_ent), 0, true)
+                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], main_ent, attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), false, true, entity.is_entity_a_ped(main_ent), 2, true)
+                                natives.PROCESS_ENTITY_ATTACHMENTS(main_ent)
                             else
-                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], all_entities["" .. attach_handler .. ""], attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), true, true, entity.is_entity_a_ped(all_entities["" .. attach_handler .. ""]), 0, true)
+                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], all_entities["" .. attach_handler .. ""], attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), false, true, entity.is_entity_a_ped(all_entities["" .. attach_handler .. ""]), 2, true)
+                                natives.PROCESS_ENTITY_ATTACHMENTS(all_entities["" .. attach_handler .. ""])
                             end
                             attach_x_index = false
                             attach_y_index = false
@@ -1087,9 +1089,11 @@ function xml_handler.spawn_vehicle(string_path, v3_pos, float_heading)
                         end
                         if attach_x_index and attach_y_index and attach_z_index and attach_rot_p_index and attach_rot_r_index and attach_rot_y_index then
                             if all_entities["" .. attach_handler .. ""] == nil then
-                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], main_ent, attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), true, true, entity.is_entity_a_ped(main_ent), 0, true)
+                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], main_ent, attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), false, true, entity.is_entity_a_ped(main_ent), 2, true)
+                                natives.PROCESS_ENTITY_ATTACHMENTS(main_ent)
                             else
-                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], all_entities["" .. attach_handler .. ""], attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), true, true, entity.is_entity_a_ped(all_entities["" .. attach_handler .. ""]), 0, true)
+                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], all_entities["" .. attach_handler .. ""], attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), false, true, entity.is_entity_a_ped(all_entities["" .. attach_handler .. ""]), 2, true)
+                                natives.PROCESS_ENTITY_ATTACHMENTS(all_entities["" .. attach_handler .. ""])
                             end
                             attach_x_index = false
                             attach_y_index = false
@@ -1219,9 +1223,11 @@ function xml_handler.spawn_vehicle(string_path, v3_pos, float_heading)
                         end
                         if attach_x_index and attach_y_index and attach_z_index and attach_rot_p_index and attach_rot_r_index and attach_rot_y_index then
                             if all_entities["" .. attach_handler .. ""] == nil then
-                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], main_ent, attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), true, true, entity.is_entity_a_ped(main_ent), 0, true)
+                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], main_ent, attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), false, true, entity.is_entity_a_ped(main_ent), 2, true)
+                                natives.PROCESS_ENTITY_ATTACHMENTS(main_ent)
                             else
-                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], all_entities["" .. attach_handler .. ""], attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), true, true, entity.is_entity_a_ped(all_entities["" .. attach_handler .. ""]), 0, true)
+                                entity.attach_entity_to_entity(all_entities["" .. last_ent_handle .. ""], all_entities["" .. attach_handler .. ""], attach_bone, v3(attach_x, attach_y, attach_z), v3(attach_rot_p, attach_rot_r, attach_rot_y), false, true, entity.is_entity_a_ped(all_entities["" .. attach_handler .. ""]), 2, true)
+                                natives.PROCESS_ENTITY_ATTACHMENTS(all_entities["" .. attach_handler .. ""])
                             end
                             attach_x_index = false
                             attach_y_index = false

@@ -25,5 +25,6 @@ custommodderflags["Infinite Ammo"] = player.add_modder_flag("Infinite Ammo")
 custommodderflags["Anti AFK Bypass"] = player.add_modder_flag("Anti AFK Bypass")
 custommodderflags["Teleportation"] = player.add_modder_flag("Teleportation")
 custommodderflags["Super Run"] = player.add_modder_flag("Super Run")
+custommodderflags["Lobby Spoof"] = player.add_modder_flag("Lobby Spoof")
 
 return custommodderflags

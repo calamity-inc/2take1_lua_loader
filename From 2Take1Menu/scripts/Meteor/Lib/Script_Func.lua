@@ -37,7 +37,6 @@ function script_func.force_script_host()
 		while time > utils.time_ms() and script.get_host_of_this_script() ~= player.player_id() do
 			if player.is_player_valid(player.player_id()) then
 				natives.REQUEST_SCRIPT("freemode")
-				natives.REQUEST_SCRIPT("main")
 				natives.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
 			end
 			system.yield(0)

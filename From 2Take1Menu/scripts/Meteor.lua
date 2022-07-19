@@ -25,6 +25,7 @@ local player_func = require("Meteor/Lib/Player_Func")
 local custommodderflags = require("Meteor/Data/ModderFlags")
 local NetEventID = require("Meteor/Mapper/NetEventIDs")
 local NetEventName = require("Meteor/Mapper/NetEventNames")
+local UserNetEventName = require("Meteor/Mapper/UserNetEventNames")
 local ObjectModel = require("Meteor/Mapper/ObjectModels")
 local PedModel = require("Meteor/Mapper/PedModels")
 local VehicleModel = require("Meteor/Mapper/VehicleModels")
@@ -39,7 +40,8 @@ for i = 1, #require_files do
 	end
 end
 
-Meteor = "Meteor v1.5.0"
+Meteor = "Meteor v1.6.0"
+MeteorVer = "1.6.0"
 
 do
 	if not utils.dir_exists(utils.get_appdata_path("PopstarDevs", "2Take1Menu").."\\scripts\\MeteorConfig\\Logs") then
@@ -93,6 +95,7 @@ local all_settings = {
 	"» Flames Gun Effects",
 	"» Rapid Fire",
 	"» Flamethrower",
+	"» Mine Impact Gun",
 	"» Delete Gun",
 	"» Nuke Gun",
 	"» Airstrike Gun",
@@ -140,6 +143,7 @@ local all_settings = {
 	"» Random Player",
 	"» Auto Force Session Host",
 	"» Auto Force Script Host",
+	"» Block Join Requests",
 	"» Hide Session",
 	"» Disable Recording",
 	"» Local Time",
@@ -172,6 +176,7 @@ local all_settings = {
 	"» Anti East Ukraine",
 	"» Anti West Taiwan",
 	"» Anti Level 8000",
+	"» Anti Down Syndrome",
 	"» Anti Submarine Missile",
 	"» Auto Kick All Modders",
 	"» Exclude Yourself From No Fly Zones",
@@ -180,6 +185,7 @@ local all_settings = {
 	"» Zero Gravity Vehicles",
 	"» Reduce Vehicle Grip",
 	"» Out Of Control",
+	"» Frodo In Da Hood",
 	"» Clumsy Peds",
 	"» Petrol Leaking Vehicles",
 	"» Ped Scream",
@@ -204,6 +210,7 @@ local all_settings = {
 	"» Nearby Vehicles Godmode",
 	"» Lock All Vehicle Doors",
 	"» Train Key Control",
+	"» RGB Neons",
 	"» Vehicle Godmode",
 	"» Heli Blades Speed",
 	"» Remove Plane Turbulence",
@@ -254,19 +261,19 @@ local all_settings = {
 	"» Bad Parachute Model Detection",
 	"» Modded Explosion Detection",
 	"» Uh Oh Spaghetti O's Detection",
-	"» Invalid Movement Detection",
 	"» Modded Vehicle Modification Detection",
 	"» Scripted Entity Spawn Detection",
 	"» No Ragdoll Detection",
-	"» Infinite Ammo Detection",
 	"» Anti AFK Bypass Detection",
 	"» Teleportation Detection",
 	"» Super Run Detection",
+	"» Lobby Spoof Detection",
 	"» Exclude Friends From Detections",
 	"» Exclude Whitelisted Players From Detections",
 	"» Auto Waypoint Tp",
 	"» Display Welcome Screen",
 	"» Header Height Offset",
+	"» Header Alpha",
 	"» Header Playback Speed",
 	"» Downgrade To Standard",
 	"» Chat Command Prefix"
@@ -330,6 +337,7 @@ local InvalidMovementDetectionPlayer = {}
 local InvalidEntitySpawnDetectionPlayer = {}
 local NoRagdollDetectionPlayer = {}
 local SuperRunDetectionPlayer = {}
+local LobbySpoofDetectionPlayer = {}
 
 local SessionBrokenAlteredSHQueue = false
 local SessionBrokenBadScriptEvent = false
@@ -342,234 +350,187 @@ local SessionBrokenModifiedWeather = false
 
 local ChatCommandPrefix = settings["» Chat Command Prefix"].Value or "!"
 
-local function update_last_joined_player()
-	if feature["» Last Joined Player Time"] then
-		menu.delete_feature(feature["» Last Joined Player Time"].id)
-		feature["» Last Joined Player Time"] = nil
-	end
-	if feature["» Last Joined Player Name"] then
-		menu.delete_feature(feature["» Last Joined Player Name"].id)
-		feature["» Last Joined Player Name"] = nil
-	end
-	if feature["» Last Joined Player SCID"] then
-		menu.delete_feature(feature["» Last Joined Player SCID"].id)
-		feature["» Last Joined Player SCID"] = nil
-	end
-	if feature["» Last Joined Player IP"] then
-		menu.delete_feature(feature["» Last Joined Player IP"].id)
-		feature["» Last Joined Player IP"] = nil
-	end
-	if utils.file_exists(utils.get_appdata_path("PopstarDevs", "2Take1Menu").."\\scripts\\Meteor\\Data\\LoggedPlayers.log") then
-		local file = io.open(utils.get_appdata_path("PopstarDevs", "2Take1Menu").."\\scripts\\Meteor\\Data\\LoggedPlayers.log", "r")
-		local file_content_table = {}
-		local file_content_count = 1
-		for line in file:lines() do
-			file_content_table[file_content_count] = "" .. line .. ""
-			file_content_count = file_content_count + 1
+if eventhooks["» Main Script Event Hook"] == nil then
+	eventhooks["» Main Script Event Hook"] = hook.register_script_event_hook(function(source, target, params, count)
+		for i = 1, #params do
+			params[i] = params[i] & 0xFFFFFFFF
 		end
-		if file_content_table[#file_content_table] ~= nil and string.find(file_content_table[#file_content_table], "|") then
-			local info_parts = text_func.split_string(file_content_table[#file_content_table], "||")
-			local log_time = info_parts[1]
-			local player_name = info_parts[2]
-			local player_scid = info_parts[3]
-			local player_ip = info_parts[4]
-			feature["» Last Joined Player Time"] = menu.add_feature("» Log Time:", "action_value_str", localparents["» Last Joined Player"].id, function(f)
-				utils.to_clipboard(tostring(log_time))
-				menu.notify("Copied Log Time - " .. tostring(log_time) .. "")
-			end)
-			feature["» Last Joined Player Time"]:set_str_data({"" .. log_time .. ""})
-			feature["» Last Joined Player Name"] = menu.add_feature("» Copy Name:", "action_value_str", localparents["» Last Joined Player"].id, function(f)
-				utils.to_clipboard(tostring(player_name))
-				menu.notify("Copied Player Name To Clipboard - " .. tostring(player_name) .. "")
-			end)
-			feature["» Last Joined Player Name"]:set_str_data({"" .. tostring(player_name) .. ""})
-			feature["» Last Joined Player SCID"] = menu.add_feature("» Copy SCID:", "action_value_str", localparents["» Last Joined Player"].id, function(f)
-				utils.to_clipboard("" .. player_scid .. "")
-				menu.notify("Copied Player SCID To Clipboard - " .. player_scid .. "")
-			end)
-			feature["» Last Joined Player SCID"]:set_str_data({"" .. player_scid .. ""})
-			feature["» Last Joined Player IP"] = menu.add_feature("» Copy IP:", "action_value_str", localparents["» Last Joined Player"].id, function(f)
-				utils.to_clipboard(utilities.dec_to_ipv4(tonumber(player_ip)))
-				menu.notify("Copied Player IP To Clipboard - " .. utilities.dec_to_ipv4(tonumber(player_ip)) .. "")
-			end)
-			feature["» Last Joined Player IP"]:set_str_data({"" .. utilities.dec_to_ipv4(tonumber(player_ip)) .. ""})
+		if params[1] == 1695663635 or params[1] == 522189882 then
+			SessionBrokenBadScriptEvent = true
 		end
-	end
+	end)
 end
 
-eventhooks["» Main Script Event Hook"] = hook.register_script_event_hook(function(source, target, params, count)
-	for i = 1, #params do
-		params[i] = params[i] & 0xFFFFFFFF
-	end
-	if params[1] == 1695663635 or params[1] == 522189882 then
-		SessionBrokenBadScriptEvent = true
-	end
-end)
+if eventhooks["» Main Net Event Hook"] == nil then
+	eventhooks["» Main Net Event Hook"] = hook.register_net_event_hook(function(source, target, eventId)
+		if eventId == NetEventID["SCRIPT_ENTITY_STATE_CHANGE_EVENT"] or eventId == NetEventID["PED_PLAY_PAIN_EVENT"] then
+			SessionBrokenModifiedEntityState = true
+		end
+		if eventId == NetEventID["GAME_CLOCK_EVENT"] or eventId == NetEventID["GAME_WEATHER_EVENT"] then
+			SessionBrokenModifiedWeather = true
+		end
+		if eventId == NetEventID["GIVE_PICKUP_REWARDS_EVENT"] or eventId == NetEventID["REPORT_CASH_SPAWN_EVENT"] then
+			InvalidPickupPlacement = true
+		end
+		if eventId == NetEventID["NETWORK_CHECK_EXE_SIZE_EVENT"] or eventId == NetEventID["NETWORK_CHECK_CODE_CRCS_EVENT"] or eventId == NetEventID["NETWORK_CHECK_CATALOG_CRC"] then
+			SessionBrokenGameServerModify = true
+		end
+	end)
+end
 
-eventhooks["» Main Net Event Hook"] = hook.register_net_event_hook(function(source, target, eventId)
-	if eventId == NetEventID["SCRIPT_ENTITY_STATE_CHANGE_EVENT"] or eventId == NetEventID["PED_PLAY_PAIN_EVENT"] then
-		SessionBrokenModifiedEntityState = true
-	end
-	if eventId == NetEventID["GAME_CLOCK_EVENT"] or eventId == NetEventID["GAME_WEATHER_EVENT"] then
-		SessionBrokenModifiedWeather = true
-	end
-	if eventId == NetEventID["GIVE_PICKUP_REWARDS_EVENT"] or eventId == NetEventID["REPORT_CASH_SPAWN_EVENT"] then
-		InvalidPickupPlacement = true
-	end
-	if eventId == NetEventID["NETWORK_CHECK_EXE_SIZE_EVENT"] or eventId == NetEventID["NETWORK_CHECK_CODE_CRCS_EVENT"] or eventId == NetEventID["NETWORK_CHECK_CATALOG_CRC"] then
-		SessionBrokenGameServerModify = true
-	end
-end)
+if listeners["» Main Player Leave Event Listener"] == nil then
+	listeners["» Main Player Leave Event Listener"] = event.add_event_listener("player_leave", function(left_player)
+		altered_sh_migration_detection_timer_left_player = utils.time_ms() + 8000
+		local my_pid = player.player_id()
+		if left_player.player == my_pid then
+			meteor_session_timer = utils.time_ms() + 15000
+			did_someone_type = false
+			SessionBrokenAlteredSHQueue = false
+			SessionBrokenMissingScriptHost = false
+			SessionBrokenBadScriptEvent = false
+			SessionBrokenAlteredSHMigration = false
+			SessionBrokenModifiedEntityState = false
+			SessionBrokenOutOfRangeWorldRender = false
+			InvalidPickupPlacement = false
+			SessionBrokenGameServerModify = false
+			SessionBrokenModifiedWeather = false
+			if feature["» Holy $1B Pickup"] then
+				menu.delete_feature(feature["» Holy $1B Pickup"].id)
+			end
+			if feature["» Create Money Pickup"] then
+				menu.delete_feature(feature["» Create Money Pickup"].id)
+			end
+			if feature["» Money Pickup Loop"] then
+				menu.delete_feature(feature["» Money Pickup Loop"].id)
+			end
+			if feature["» Real Money Gun"] then
+				menu.delete_feature(feature["» Real Money Gun"].id)
+			end
+			for i = 0, 31 do
+				if meteor_entities["Player Target Ped " .. i] ~= nil and meteor_entities["Player Target Vehicle " .. i] ~= nil then
+					entity.delete_entity(meteor_entities["Player Target Ped " .. i])
+					entity.delete_entity(meteor_entities["Player Target Vehicle " .. i])
+					meteor_entities["Player Target Ped " .. i] = nil
+					meteor_entities["Player Target Vehicle " .. i] = nil
+				end
+			end
+			my_pid = player.player_id()
+		end
+		InvalidSCIDDetectionPlayer[left_player.player] = false
+		ModdedHealthDetectionPlayer[left_player.player] = false
+		GodmodeDetectionPlayer[left_player.player] = false
+		InvalidNameDetectionPlayer[left_player.player] = false
+		InvalidIPDetectionPlayer[left_player.player] = false
+		StandUserDetectionPlayer[left_player.player] = false
+		MaxSpeedBypassDetectionPlayer[left_player.player] = false
+		InvalidStatsDetectionPlayer[left_player.player] = false
+		SessionHostCrashDetectionPlayer[left_player.player] = false
+		BadOutfitDataDetectionPlayer[left_player.player] = false
+		FakeTypingIndicatorDetectionPlayer[left_player.player] = false
+		ModdedSpectateDetectionPlayer[left_player.player] = false
+		ModdedOTRDetectionPlayer[left_player.player] = false
+		BadParachuteModelDetectionPlayer[left_player.player] = false
+		InvalidMovementDetectionPlayer[left_player.player] = false
+		InvalidEntitySpawnDetectionPlayer[left_player.player] = false
+		NoRagdollDetectionPlayer[left_player.player] = false
+		SuperRunDetectionPlayer[left_player.player] = false
+		LobbySpoofDetectionPlayer[left_player.player] = false
+		IsOTRFor[left_player.player] = 0
+		if eventhooks["» Log Script Events " .. left_player.player] then
+			hook.remove_script_event_hook(eventhooks["» Log Script Events " .. left_player.player])
+			eventhooks["» Log Script Events " .. left_player.player] = nil
+		end
+		if eventhooks["» Log Net Events " .. left_player.player] then
+			hook.remove_net_event_hook(eventhooks["» Log Net Events " .. left_player.player])
+			eventhooks["» Log Net Events " .. left_player.player] = nil
+		end
+		if meteor_entities["Player Target Ped " .. left_player.player] ~= nil and meteor_entities["Player Target Vehicle " .. left_player.player] ~= nil then
+			entity.delete_entity(meteor_entities["Player Target Ped " .. left_player.player])
+			entity.delete_entity(meteor_entities["Player Target Vehicle " .. left_player.player])
+			meteor_entities["Player Target Ped " .. left_player.player] = nil
+			meteor_entities["Player Target Vehicle " .. left_player.player] = nil
+		end
+		if orbital_cannon_room_blocking_object then
+			network.request_control_of_entity(orbital_cannon_room_blocking_object)
+			entity.delete_entity(orbital_cannon_room_blocking_object)
+			orbital_cannon_room_blocking_object = nil
+		end
+	end)
+end
 
-listeners["» Main Player Leave Event Listener"] = event.add_event_listener("player_leave", function(left_player)
-	altered_sh_migration_detection_timer_left_player = utils.time_ms() + 4000
-	local my_pid = player.player_id()
-	if left_player.player == my_pid then
-		meteor_session_timer = utils.time_ms() + 15000
-		did_someone_type = false
-		SessionBrokenAlteredSHQueue = false
-		SessionBrokenMissingScriptHost = false
-		SessionBrokenBadScriptEvent = false
-		SessionBrokenAlteredSHMigration = false
-		SessionBrokenModifiedEntityState = false
-		SessionBrokenOutOfRangeWorldRender = false
-		InvalidPickupPlacement = false
-		SessionBrokenGameServerModify = false
-		SessionBrokenModifiedWeather = false
-		if feature["» Holy $1B Pickup"] then
-			menu.delete_feature(feature["» Holy $1B Pickup"].id)
+if listeners["» Main Player Join Event Listener"] == nil then
+	listeners["» Main Player Join Event Listener"] = event.add_event_listener("player_join", function(joined_player)
+		if joined_player.player == player.player_id() then
+			meteor_session_timer = utils.time_ms() + 15000
+			did_someone_type = false
+			SessionBrokenAlteredSHQueue = false
+			SessionBrokenMissingScriptHost = false
+			SessionBrokenBadScriptEvent = false
+			SessionBrokenAlteredSHMigration = false
+			SessionBrokenModifiedEntityState = false
+			SessionBrokenOutOfRangeWorldRender = false
+			InvalidPickupPlacement = false
+			SessionBrokenGameServerModify = false
+			SessionBrokenModifiedWeather = false
+			if feature["» Holy $1B Pickup"] then
+				menu.delete_feature(feature["» Holy $1B Pickup"].id)
+			end
+			if feature["» Create Money Pickup"] then
+				menu.delete_feature(feature["» Create Money Pickup"].id)
+			end
+			if feature["» Money Pickup Loop"] then
+				menu.delete_feature(feature["» Money Pickup Loop"].id)
+			end
+			if feature["» Real Money Gun"] then
+				menu.delete_feature(feature["» Real Money Gun"].id)
+			end
+		else
+			meteor_session_timer = utils.time_ms() + 4000
 		end
-		if feature["» Create Money Pickup"] then
-			menu.delete_feature(feature["» Create Money Pickup"].id)
+		if joined_player.player == player.player_id() then
+			altered_sh_migration_detection_timer = utils.time_ms() + 8000
 		end
-		if feature["» Money Pickup Loop"] then
-			menu.delete_feature(feature["» Money Pickup Loop"].id)
-		end
-		if feature["» Real Money Gun"] then
-			menu.delete_feature(feature["» Real Money Gun"].id)
-		end
-		for i = 0, 31 do
-			if meteor_entities["Player Target Ped " .. i] ~= nil and meteor_entities["Player Target Vehicle " .. i] ~= nil then
-				entity.delete_entity(meteor_entities["Player Target Ped " .. i])
-				entity.delete_entity(meteor_entities["Player Target Vehicle " .. i])
-				meteor_entities["Player Target Ped " .. i] = nil
-				meteor_entities["Player Target Vehicle " .. i] = nil
+		if player.is_player_valid(joined_player.player) then
+			if not string.find(player.get_player_name(joined_player.player), "|") then
+				if joined_player.player ~= player.player_id() then
+					local params_string = ""
+					local os_year = os.date("*t").year
+					if os_year < 10 then
+						os_year = "0" .. os_year .. ""
+					end
+					local os_month = os.date("*t").month
+					if os_month < 10 then
+						os_month = "0" .. os_month .. ""
+					end
+					local os_day = os.date("*t").day
+					if os_day < 10 then
+						os_day = "0" .. os_day .. ""
+					end
+					local os_hour = os.date("*t").hour
+					if os_hour < 10 then
+						os_hour = "0" .. os_hour .. ""
+					end
+					local os_min = os.date("*t").min
+					if os_min < 10 then
+						os_min = "0" .. os_min .. ""
+					end
+					local os_sec = os.date("*t").sec
+					if os_sec < 10 then
+						os_sec = "0" .. os_sec .. ""
+					end
+					local time_prefix = "" .. os_year .. "-" .. os_month .. "-" .. os_day .. " " .. os_hour .. ":" .. os_min .. ":" .. os_sec .. ""
+					text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\Meteor\\Data\\", "") .. "\\LoggedPlayers.log", "w"), "")
+					text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\Meteor\\Data\\", "") .. "\\LoggedPlayers.log", "a"), "" .. time_prefix .. "||" .. player.get_player_name(joined_player.player) .. "||" .. player.get_player_scid(joined_player.player) .. "||" .. player.get_player_ip(joined_player.player) .. "\n")
+				end
 			end
 		end
-		my_pid = player.player_id()
-	end
-	InvalidSCIDDetectionPlayer[left_player.player] = false
-	ModdedHealthDetectionPlayer[left_player.player] = false
-	GodmodeDetectionPlayer[left_player.player] = false
-	InvalidNameDetectionPlayer[left_player.player] = false
-	InvalidIPDetectionPlayer[left_player.player] = false
-	StandUserDetectionPlayer[left_player.player] = false
-	MaxSpeedBypassDetectionPlayer[left_player.player] = false
-	InvalidStatsDetectionPlayer[left_player.player] = false
-	SessionHostCrashDetectionPlayer[left_player.player] = false
-	BadOutfitDataDetectionPlayer[left_player.player] = false
-	FakeTypingIndicatorDetectionPlayer[left_player.player] = false
-	ModdedSpectateDetectionPlayer[left_player.player] = false
-	ModdedOTRDetectionPlayer[left_player.player] = false
-	BadParachuteModelDetectionPlayer[left_player.player] = false
-	InvalidMovementDetectionPlayer[left_player.player] = false
-	InvalidEntitySpawnDetectionPlayer[left_player.player] = false
-	NoRagdollDetectionPlayer[left_player.player] = false
-	SuperRunDetectionPlayer[left_player.player] = false
-	IsOTRFor[left_player.player] = 0
-	if eventhooks["» Log Script Events " .. left_player.player] then
-		hook.remove_script_event_hook(eventhooks["» Log Script Events " .. left_player.player])
-		eventhooks["» Log Script Events " .. left_player.player] = nil
-	end
-	if eventhooks["» Log Net Events " .. left_player.player] then
-		hook.remove_net_event_hook(eventhooks["» Log Net Events " .. left_player.player])
-		eventhooks["» Log Net Events " .. left_player.player] = nil
-	end
-	if meteor_entities["Player Target Ped " .. left_player.player] ~= nil and meteor_entities["Player Target Vehicle " .. left_player.player] ~= nil then
-		entity.delete_entity(meteor_entities["Player Target Ped " .. left_player.player])
-		entity.delete_entity(meteor_entities["Player Target Vehicle " .. left_player.player])
-		meteor_entities["Player Target Ped " .. left_player.player] = nil
-		meteor_entities["Player Target Vehicle " .. left_player.player] = nil
-	end
-	if orbital_cannon_room_blocking_object then
-		network.request_control_of_entity(orbital_cannon_room_blocking_object)
-		entity.delete_entity(orbital_cannon_room_blocking_object)
-		orbital_cannon_room_blocking_object = nil
-	end
-end)
-
-listeners["» Main Player Join Event Listener"] = event.add_event_listener("player_join", function(joined_player)
-	if joined_player.player == player.player_id() then
-		meteor_session_timer = utils.time_ms() + 15000
-		did_someone_type = false
-		SessionBrokenAlteredSHQueue = false
-		SessionBrokenMissingScriptHost = false
-		SessionBrokenBadScriptEvent = false
-		SessionBrokenAlteredSHMigration = false
-		SessionBrokenModifiedEntityState = false
-		SessionBrokenOutOfRangeWorldRender = false
-		InvalidPickupPlacement = false
-		SessionBrokenGameServerModify = false
-		SessionBrokenModifiedWeather = false
-		if feature["» Holy $1B Pickup"] then
-			menu.delete_feature(feature["» Holy $1B Pickup"].id)
-		end
-		if feature["» Create Money Pickup"] then
-			menu.delete_feature(feature["» Create Money Pickup"].id)
-		end
-		if feature["» Money Pickup Loop"] then
-			menu.delete_feature(feature["» Money Pickup Loop"].id)
-		end
-		if feature["» Real Money Gun"] then
-			menu.delete_feature(feature["» Real Money Gun"].id)
-		end
-	else
-		meteor_session_timer = utils.time_ms() + 4000
-	end
-	if joined_player.player == player.player_id() then
-		altered_sh_migration_detection_timer = utils.time_ms() + 8000
-	end
-	if player.is_player_valid(joined_player.player) then
-		if not string.find(player.get_player_name(joined_player.player), "|") then
-			if joined_player.player ~= player.player_id() then
-				local params_string = ""
-				local os_year = os.date("*t").year
-				if os_year < 10 then
-					os_year = "0" .. os_year .. ""
-				end
-				local os_month = os.date("*t").month
-				if os_month < 10 then
-					os_month = "0" .. os_month .. ""
-				end
-				local os_day = os.date("*t").day
-				if os_day < 10 then
-					os_day = "0" .. os_day .. ""
-				end
-				local os_hour = os.date("*t").hour
-				if os_hour < 10 then
-					os_hour = "0" .. os_hour .. ""
-				end
-				local os_min = os.date("*t").min
-				if os_min < 10 then
-					os_min = "0" .. os_min .. ""
-				end
-				local os_sec = os.date("*t").sec
-				if os_sec < 10 then
-					os_sec = "0" .. os_sec .. ""
-				end
-				local time_prefix = "" .. os_year .. "-" .. os_month .. "-" .. os_day .. " " .. os_hour .. ":" .. os_min .. ":" .. os_sec .. ""
-				text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\Meteor\\Data\\", "") .. "\\LoggedPlayers.log", "w"), "")
-				text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\Meteor\\Data\\", "") .. "\\LoggedPlayers.log", "a"), "" .. time_prefix .. "||" .. player.get_player_name(joined_player.player) .. "||" .. player.get_player_scid(joined_player.player) .. "||" .. player.get_player_ip(joined_player.player) .. "\n")
-				update_last_joined_player()
+		if player.is_player_valid(joined_player.player) then
+			if joined_player.player ~= player.player_id() and not string.find(player.get_player_name(joined_player.player), "|") then
+				text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\Meteor\\Data\\", "") .. "\\RememberedPlayers.log", "a"), "" .. player.get_player_name(joined_player.player) .. "|" .. player.get_player_scid(joined_player.player) .. "|" .. player.get_player_ip(joined_player.player) .. "|" .. network.network_hash_from_player(joined_player.player) .. "\n")
 			end
 		end
-	end
-	if player.is_player_valid(joined_player.player) then
-		if joined_player.player ~= player.player_id() and not string.find(player.get_player_name(joined_player.player), "|") then
-			text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\Meteor\\Data\\", "") .. "\\RememberedPlayers.log", "a"), "" .. player.get_player_name(joined_player.player) .. "|" .. player.get_player_scid(joined_player.player) .. "|" .. player.get_player_ip(joined_player.player) .. "|" .. player.get_player_host_token(joined_player.player) .. "|" .. network.network_hash_from_player(joined_player.player) .. "\n")
-		end
-	end
-end)
+	end)
+end
 
 localparents["» Meteor"] = menu.add_feature("» Meteor", "parent", 0).id
 
@@ -1377,6 +1338,27 @@ feature["» Flamethrower"].max = 5
 feature["» Flamethrower"].min = 0.5
 feature["» Flamethrower"].mod = 0.5
 feature["» Flamethrower"].value = 0.5
+
+feature["» Mine Impact Gun"] = menu.add_feature("» Mine Impact Gun", "value_str", localparents["» Weapon Modifiers"].id, function(f)
+	settings["» Mine Impact Gun"].Enabled = f.on
+	settings["» Mine Impact Gun"].Value = f.value
+	if f.on then
+		while f.on do
+			system.yield(0)
+			if ped.is_ped_shooting(player.get_player_ped(player.player_id())) then
+				local success, pos = ped.get_ped_last_weapon_impact(player.get_player_ped(player.player_id()))
+				while not success do
+					success, pos = ped.get_ped_last_weapon_impact(player.get_player_ped(player.player_id()))
+					system.wait(0)
+				end
+				fire.add_explosion(pos + v3(0, 0, 1), f.value + 64, true, false, 0, player.get_player_ped(player.player_id()))
+			end
+		end
+	end
+	settings["» Mine Impact Gun"].Enabled = f.on
+	settings["» Mine Impact Gun"].Value = f.value
+end)
+feature["» Mine Impact Gun"]:set_str_data({"Kinetic", "EMP", "Spike", "Slick", "Tar"})
 
 feature["» Delete Gun"] = menu.add_feature("» Delete Gun", "toggle", localparents["» Weapon Modifiers"].id, function(f)
 	settings["» Delete Gun"].Enabled = f.on
@@ -4592,6 +4574,52 @@ menu.add_feature("» Force Leave Vehicle", "action", localparents["» Vehicle Op
 	end
 end)
 
+feature["» RGB Neons"] = menu.add_feature("» RGB Neons", "slider", localparents["» Vehicle Options"].id, function(f)
+	settings["» RGB Neons"].Enabled = f.on
+	settings["» RGB Neons"].Value = f.value
+	while f.on do
+		system.yield(0)
+		if player.is_player_in_any_vehicle(player.player_id()) then
+			for i = 0, 7 do
+				if not vehicle.is_vehicle_neon_light_enabled(player.get_player_vehicle(player.player_id()), i) then
+					vehicle.set_vehicle_neon_light_enabled(player.get_player_vehicle(player.player_id()), i, true)
+				end
+			end
+			vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(255, 5, 5))
+			for i = 5, 255 do
+				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(255, i, 5))
+				system.wait(10)
+			end
+			for i = 255, 5, -1 do
+				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(i, 255, 5))
+				system.wait(10)
+			end
+			for i = 5, 255 do
+				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(5, 255, i))
+				system.wait(10)
+			end
+			for i = 255, 5, -1 do
+				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(5, i, 255))
+				system.wait(10)
+			end
+			for i = 5, 255 do
+				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(i, 5, 255))
+				system.wait(10)
+			end
+			for i = 255, 5, -1 do
+				vehicle.set_vehicle_neon_lights_color(player.get_player_vehicle(player.player_id()), text_func.rgba_to_uint32_t(255, 5, i))
+				system.wait(10)
+			end
+		end
+	end
+	settings["» RGB Neons"].Enabled = f.on
+	settings["» RGB Neons"].Value = f.value
+end)
+feature["» RGB Neons"].max = 50
+feature["» RGB Neons"].min = 0
+feature["» RGB Neons"].mod = 1
+feature["» RGB Neons"].value = 0
+
 feature["» Vehicle Godmode"] = menu.add_feature("» Vehicle Godmode", "value_str", localparents["» Vehicle Options"].id, function(f)
 	settings["» Vehicle Godmode"].Enabled = f.on
 	settings["» Vehicle Godmode"].Value = f.value
@@ -4761,6 +4789,11 @@ feature["» Vehicle Fly"] = menu.add_feature("» Vehicle Fly", "slider", localpa
 	end
 	if not f.on then
 		entity.freeze_entity(player.get_player_vehicle(player.player_id()), false)
+		system.yield(20)
+		local velocity = entity.get_entity_velocity(player.get_player_vehicle(player.player_id()))
+		system.yield(20)
+		entity.set_entity_coords_no_offset(player.get_player_vehicle(player.player_id()), entity.get_entity_coords(player.get_player_vehicle(player.player_id())))
+		entity.set_entity_velocity(player.get_player_vehicle(player.player_id()), velocity)
 	end
 	settings["» Vehicle Fly"].Enabled = f.on
 	settings["» Vehicle Fly"].Value = f.value
@@ -6553,7 +6586,61 @@ feature["» Bail To Singleplayer"] = menu.add_feature("» Bail To Singleplayer",
 end)
 feature["» Bail To Singleplayer"]:set_str_data({"v1", "v2", "v3"})
 
-feature["» Hide Session"] = menu.add_feature("» Hide Session", "toggle", localparents["» Lobby"].id, function(f)
+feature["» Enable Spectator Chat"] = menu.add_feature("» Enable Spectator Chat", "toggle", localparents["» Lobby"].id, function(f)
+	settings["» Enable Spectator Chat"].Enabled = f.on
+	if f.on then
+		while f.on do
+			if network.is_session_started() then
+				natives.NETWORK_SET_NO_SPECTATOR_CHAT(false)
+				natives.NETWORK_OVERRIDE_CHAT_RESTRICTIONS(player.player_id(), true)
+				natives.NETWORK_OVERRIDE_SEND_RESTRICTIONS(player.player_id(), true)
+				natives.NETWORK_OVERRIDE_RECEIVE_RESTRICTIONS(player.player_id(), true)
+				natives.MULTIPLAYER_CHAT_SET_DISABLED(false)
+			end
+			system.yield(8000)
+		end
+	end
+	if not f.on then
+		if network.is_session_started() then
+			natives.NETWORK_SET_NO_SPECTATOR_CHAT(true)
+			natives.NETWORK_OVERRIDE_CHAT_RESTRICTIONS(player.player_id(), false)
+			natives.NETWORK_OVERRIDE_SEND_RESTRICTIONS(player.player_id(), false)
+			natives.NETWORK_OVERRIDE_RECEIVE_RESTRICTIONS(player.player_id(), false)
+		end
+	end
+	settings["» Enable Spectator Chat"].Enabled = f.on
+end)
+
+feature["» Disable Recording"] = menu.add_feature("» Disable Recording", "toggle", localparents["» Lobby"].id, function(f)
+	settings["» Disable Recording"].Enabled = f.on
+	while f.on do
+		system.yield(0)
+		natives.STOP_RECORDING_THIS_FRAME()
+	end
+	settings["» Disable Recording"].Enabled = f.on
+end)
+
+localparents["» Host Options"] = menu.add_feature("» Host Options", "parent", localparents["» Lobby"].id)
+
+feature["» Block Join Requests"] = menu.add_feature("» Block Join Requests", "toggle", localparents["» Host Options"].id, function(f)
+	settings["» Block Join Requests"].Enabled = f.on
+	if f.on then
+		while f.on do
+			if network.is_session_started() and network.network_is_host() then
+				natives.NETWORK_SESSION_BLOCK_JOIN_REQUESTS(true)
+			end
+			system.yield(6000)
+		end
+	end
+	if not f.on then
+		if network.is_session_started() and network.network_is_host() then
+			natives.NETWORK_SESSION_BLOCK_JOIN_REQUESTS(false)
+		end
+	end
+	settings["» Block Join Requests"].Enabled = f.on
+end)
+
+feature["» Hide Session"] = menu.add_feature("» Hide Session", "toggle", localparents["» Host Options"].id, function(f)
 	settings["» Hide Session"].Enabled = f.on
 	if f.on then
 		while f.on do
@@ -6573,15 +6660,6 @@ feature["» Hide Session"] = menu.add_feature("» Hide Session", "toggle", local
 		end
 	end
 	settings["» Hide Session"].Enabled = f.on
-end)
-
-feature["» Disable Recording"] = menu.add_feature("» Disable Recording", "toggle", localparents["» Lobby"].id, function(f)
-	settings["» Disable Recording"].Enabled = f.on
-	while f.on do
-		system.yield(0)
-		natives.STOP_RECORDING_THIS_FRAME()
-	end
-	settings["» Disable Recording"].Enabled = f.on
 end)
 
 menu.add_feature("» Is Session Broken?", "action", localparents["» Lobby"].id, function(f, pid)
@@ -6743,6 +6821,102 @@ menu.add_feature("» Is Session Broken?", "action", localparents["» Lobby"].id,
 	end
 end)
 
+localparents["» Force S/H"] = menu.add_feature("» Force S/H", "parent", localparents["» Lobby"].id)
+
+feature["» Auto Force Session Host"] = menu.add_feature("» Auto Force Session Host", "toggle", localparents["» Force S/H"].id, function(f, pid)
+	settings["» Auto Force Session Host"].Enabled = f.on
+	if f.on then
+		while f.on do
+			system.yield(5000)
+			if network.is_session_started() then
+				if not network.network_is_host() then
+					if player_func.get_host_queue_count() > 0 then
+						for pid = 0, 31 do
+							if player.is_player_valid(pid) and player.get_player_host_priority(pid) < player.get_player_host_priority(player.player_id()) then
+								if network.network_is_host() then
+									network.network_session_kick_player(pid)
+								elseif player.is_player_host(pid) and player.is_player_modder(pid, -1) then
+									script_func.script_event_kick(pid)
+								else
+									network.force_remove_player(pid)
+								end
+							end
+						end
+						system.wait(10000)
+					else
+						if player.is_player_modder(player.get_host(), -1) then
+							script_func.script_event_kick(player.get_host())
+						else
+							network.force_remove_player(player.get_host())
+						end
+						system.wait(10000)
+					end
+				end
+			end
+		end
+	end
+	settings["» Auto Force Session Host"].Enabled = f.on
+end)
+
+menu.add_feature("» Force Session Host", "action", localparents["» Force S/H"].id, function(f)
+	if network.is_session_started() then
+		if network.network_is_host() then
+			menu.notify("You are already the session host!", Meteor, 3, 211)
+		else
+			if player_func.get_host_queue_count() > 0 then
+				for pid = 0, 31 do
+					if player.is_player_valid(pid) and player.get_player_host_priority(pid) < player.get_player_host_priority(player.player_id()) then
+						if network.network_is_host() then
+							network.network_session_kick_player(pid)
+						elseif player.is_player_host(pid) and player.is_player_modder(pid, -1) then
+							script_func.script_event_kick(pid)
+						else
+							network.force_remove_player(pid)
+						end
+					end
+				end
+				system.wait(2000)
+				if network.network_is_host() then
+					menu.notify("Successfully forced Session Host!", Meteor, 3, 0x00ff00)
+				else
+					menu.notify("Failed to force Session Host!", Meteor, 3, 211)
+				end
+			else
+				if player.is_player_modder(player.get_host(), -1) then
+					script_func.script_event_kick(player.get_host())
+				else
+					network.force_remove_player(player.get_host())
+				end
+				system.wait(2000)
+				if network.network_is_host() then
+					menu.notify("Successfully forced Session Host!", Meteor, 3, 0x00ff00)
+				else
+					menu.notify("Failed to force Session Host!", Meteor, 3, 211)
+				end
+			end
+		end
+	end
+end)
+
+feature["» Auto Force Script Host"] = menu.add_feature("» Auto Force Script Host", "toggle", localparents["» Force S/H"].id, function(f, pid)
+	settings["» Auto Force Script Host"].Enabled = f.on
+	if f.on then
+		while f.on do
+			if script.get_host_of_this_script() ~= player.player_id() then
+				script_func.force_script_host()
+			end
+			system.yield(8000)
+		end
+	end
+	settings["» Auto Force Script Host"].Enabled = f.on
+end)
+
+menu.add_feature("» Force Script Host", "action", localparents["» Force S/H"].id, function(f, pid)
+	if script.get_host_of_this_script() ~= player.player_id() then
+		script_func.force_script_host()
+	end
+end)
+
 localparents["» Session Info"] = menu.add_feature("» Session Info", "parent", localparents["» Lobby"].id, function()
 	if feature["» Session Info Player Count"] then
 		menu.delete_feature(feature["» Session Info Player Count"].id)
@@ -6791,105 +6965,60 @@ localparents["» Session Info"] = menu.add_feature("» Session Info", "parent", 
 	feature["» Session Info Script Host"]:set_str_data({tostring(player.get_player_name(script.get_host_of_this_script()))})
 end)
 
-feature["» Auto Force Session Host"] = menu.add_feature("» Auto Force Session Host", "toggle", localparents["» Lobby"].id, function(f, pid)
-	settings["» Auto Force Session Host"].Enabled = f.on
-	if f.on then
-		while f.on do
-			system.yield(5000)
-			if network.is_session_started() then
-				if not network.network_is_host() then
-					if player_func.get_host_queue_count() > 0 then
-						for pid = 0, 31 do
-							if player.is_player_valid(pid) and player.get_player_host_priority(pid) < player.get_player_host_priority(player.player_id()) then
-								if network.network_is_host() then
-									network.network_session_kick_player(pid)
-								elseif player.is_player_host(pid) and player.is_player_modder(pid, -1) then
-									script_func.script_event_kick(pid)
-								else
-									network.force_remove_player(pid)
-								end
-							end
-						end
-						system.wait(10000)
-					else
-						if player.is_player_modder(player.get_host(), -1) then
-							script_func.script_event_kick(player.get_host())
-						else
-							network.force_remove_player(player.get_host())
-						end
-						system.wait(10000)
-					end
-				end
-			end
-		end
-	end
-	settings["» Auto Force Session Host"].Enabled = f.on
-end)
-
-menu.add_feature("» Force Session Host", "action", localparents["» Lobby"].id, function(f)
-	if network.is_session_started() then
-		if network.network_is_host() then
-			menu.notify("You are already the session host!", Meteor, 3, 211)
-		else
-			if player_func.get_host_queue_count() > 0 then
-				for pid = 0, 31 do
-					if player.is_player_valid(pid) and player.get_player_host_priority(pid) < player.get_player_host_priority(player.player_id()) then
-						if network.network_is_host() then
-							network.network_session_kick_player(pid)
-						elseif player.is_player_host(pid) and player.is_player_modder(pid, -1) then
-							script_func.script_event_kick(pid)
-						else
-							network.force_remove_player(pid)
-						end
-					end
-				end
-				system.wait(2000)
-				if network.network_is_host() then
-					menu.notify("Successfully forced Session Host!", Meteor, 3, 0x00ff00)
-				else
-					menu.notify("Failed to force Session Host!", Meteor, 3, 211)
-				end
-			else
-				if player.is_player_modder(player.get_host(), -1) then
-					script_func.script_event_kick(player.get_host())
-				else
-					network.force_remove_player(player.get_host())
-				end
-				system.wait(2000)
-				if network.network_is_host() then
-					menu.notify("Successfully forced Session Host!", Meteor, 3, 0x00ff00)
-				else
-					menu.notify("Failed to force Session Host!", Meteor, 3, 211)
-				end
-			end
-		end
-	end
-end)
-
-feature["» Auto Force Script Host"] = menu.add_feature("» Auto Force Script Host", "toggle", localparents["» Lobby"].id, function(f, pid)
-	settings["» Auto Force Script Host"].Enabled = f.on
-	if f.on then
-		while f.on do
-			if script.get_host_of_this_script() ~= player.player_id() then
-				script_func.force_script_host()
-			end
-			system.yield(8000)
-		end
-	end
-	settings["» Auto Force Script Host"].Enabled = f.on
-end)
-
-menu.add_feature("» Force Script Host", "action", localparents["» Lobby"].id, function(f, pid)
-	if script.get_host_of_this_script() ~= player.player_id() then
-		script_func.force_script_host()
-	end
-end)
-
 localparents["» Last Joined Player"] = menu.add_feature("» Last Joined Player", "parent", localparents["» Lobby"].id, function()
-	update_last_joined_player()
+	if feature["» Last Joined Player Time"] then
+		menu.delete_feature(feature["» Last Joined Player Time"].id)
+		feature["» Last Joined Player Time"] = nil
+	end
+	if feature["» Last Joined Player Name"] then
+		menu.delete_feature(feature["» Last Joined Player Name"].id)
+		feature["» Last Joined Player Name"] = nil
+	end
+	if feature["» Last Joined Player SCID"] then
+		menu.delete_feature(feature["» Last Joined Player SCID"].id)
+		feature["» Last Joined Player SCID"] = nil
+	end
+	if feature["» Last Joined Player IP"] then
+		menu.delete_feature(feature["» Last Joined Player IP"].id)
+		feature["» Last Joined Player IP"] = nil
+	end
+	if utils.file_exists(utils.get_appdata_path("PopstarDevs", "2Take1Menu").."\\scripts\\Meteor\\Data\\LoggedPlayers.log") then
+		local file = io.open(utils.get_appdata_path("PopstarDevs", "2Take1Menu").."\\scripts\\Meteor\\Data\\LoggedPlayers.log", "r")
+		local file_content_table = {}
+		local file_content_count = 1
+		for line in file:lines() do
+			file_content_table[file_content_count] = "" .. line .. ""
+			file_content_count = file_content_count + 1
+		end
+		if file_content_table[#file_content_table] ~= nil and string.find(file_content_table[#file_content_table], "|") then
+			local info_parts = text_func.split_string(file_content_table[#file_content_table], "||")
+			local log_time = info_parts[1]
+			local player_name = info_parts[2]
+			local player_scid = info_parts[3]
+			local player_ip = info_parts[4]
+			feature["» Last Joined Player Time"] = menu.add_feature("» Log Time:", "action_value_str", localparents["» Last Joined Player"].id, function(f)
+				utils.to_clipboard(tostring(log_time))
+				menu.notify("Copied Log Time - " .. tostring(log_time) .. "")
+			end)
+			feature["» Last Joined Player Time"]:set_str_data({"" .. log_time .. ""})
+			feature["» Last Joined Player Name"] = menu.add_feature("» Copy Name:", "action_value_str", localparents["» Last Joined Player"].id, function(f)
+				utils.to_clipboard(tostring(player_name))
+				menu.notify("Copied Player Name To Clipboard - " .. tostring(player_name) .. "")
+			end)
+			feature["» Last Joined Player Name"]:set_str_data({"" .. tostring(player_name) .. ""})
+			feature["» Last Joined Player SCID"] = menu.add_feature("» Copy SCID:", "action_value_str", localparents["» Last Joined Player"].id, function(f)
+				utils.to_clipboard("" .. player_scid .. "")
+				menu.notify("Copied Player SCID To Clipboard - " .. player_scid .. "")
+			end)
+			feature["» Last Joined Player SCID"]:set_str_data({"" .. player_scid .. ""})
+			feature["» Last Joined Player IP"] = menu.add_feature("» Copy IP:", "action_value_str", localparents["» Last Joined Player"].id, function(f)
+				utils.to_clipboard(utilities.dec_to_ipv4(tonumber(player_ip)))
+				menu.notify("Copied Player IP To Clipboard - " .. utilities.dec_to_ipv4(tonumber(player_ip)) .. "")
+			end)
+			feature["» Last Joined Player IP"]:set_str_data({"" .. utilities.dec_to_ipv4(tonumber(player_ip)) .. ""})
+		end
+	end
 end)
-
-update_last_joined_player()
 
 menu.add_feature("» Lazer Beam On Waypoint", "action", localparents["» Miscellaneous"].id, function(f)
 	local wp = ui.get_waypoint_coord()
@@ -6972,14 +7101,16 @@ end):set_str_data(DataMain.all_modder_flags_table)
 feature["» Guided Missile Tracker"] = menu.add_feature("» Guided Missile Tracker", "toggle", localparents["» Miscellaneous"].id, function(f, pid)
 	settings["» Guided Missile Tracker"].Enabled = f.on
 	if f.on then
-		eventhooks["» Guided Missile Tracker"] = hook.register_script_event_hook(function(source, target, params, count)
-			for i = 1, #params do
-				params[i] = params[i] & 0xFFFFFFFF
-			end
-			if params[1] == 0xd621a95f then
-				menu.notify(tostring(player.get_player_name(source)) .. " launched a guided missile!", Meteor, 8, 0x64FA7800)
-			end
-		end)
+		if eventhooks["» Guided Missile Tracker"] == nil then
+			eventhooks["» Guided Missile Tracker"] = hook.register_script_event_hook(function(source, target, params, count)
+				for i = 1, #params do
+					params[i] = params[i] & 0xFFFFFFFF
+				end
+				if params[1] == 0xd621a95f then
+					menu.notify(tostring(player.get_player_name(source)) .. " launched a guided missile!", Meteor, 8, 0x64FA7800)
+				end
+			end)
+		end
 		while f.on do
 			system.yield(4000)
 			if not player_func.is_player_in_interior(player.player_id()) then
@@ -7012,52 +7143,53 @@ end)
 feature["» Remember Players"] = menu.add_feature("» Remember Players", "toggle", localparents["» Miscellaneous"].id, function(f, pid)
 	settings["» Remember Players"].Enabled = f.on
 	if f.on then
-		listeners["» Remember Players"] = event.add_event_listener("player_join", function(joined_player)
-			if player.is_player_valid(joined_player.player) then
-				if joined_player.player ~= player.player_id() and not string.find(player.get_player_name(joined_player.player), "|") then
-					if utils.file_exists(utils.get_appdata_path("PopstarDevs", "2Take1Menu").."\\scripts\\Meteor\\Data\\RememberedPlayers.log") then
-						local file = io.open(utils.get_appdata_path("PopstarDevs", "2Take1Menu").."\\scripts\\Meteor\\Data\\RememberedPlayers.log", "r")
-						local file_found_index = false
-						local all_lines = 0
-						for line in file:lines() do
-							all_lines = all_lines + 1
-							if not file_found_index then
-								if string.find(line, "|") then
-									local parts = text_func.split_string(line, "|")
-									local player_name = parts[1]
-									local player_scid = tonumber(parts[2])
-									local player_ip = tonumber(parts[3])
-									local player_host_token = tonumber(parts[4])
-									local player_net_hash = tonumber(parts[5])
-									local guilty = false
-									if player_net_hash == network.network_hash_from_player(joined_player.player) and (tostring(player_name) ~= tostring(player.get_player_name(joined_player.player)) or player_scid ~= player.get_player_scid(joined_player.player) or player_ip ~= player.get_player_ip(joined_player.player) or player_host_token ~= player.get_player_host_token(joined_player.player)) then
-										guilty = true
-									end
-									if player_scid == player.get_player_scid(joined_player.player) and (tostring(player_name) ~= tostring(player.get_player_name(joined_player.player)) or player_net_hash ~= network.network_hash_from_player(joined_player.player) or player_ip ~= player.get_player_ip(joined_player.player) or player_host_token ~= player.get_player_host_token(joined_player.player)) then
-										guilty = true
-									end
-									if tostring(player_name) == tostring(player.get_player_name(joined_player.player)) and (tostring(player_name) ~= tostring(player.get_player_name(joined_player.player)) or player_net_hash ~= network.network_hash_from_player(joined_player.player) or player_ip ~= player.get_player_ip(joined_player.player) or player_host_token ~= player.get_player_host_token(joined_player.player)) then
-										guilty = true
-									end
-									if guilty then
-										if tostring(player_name) ~= tostring(player.get_player_name(joined_player.player)) then
-											menu.notify("I've seen " .. tostring(player.get_player_name(joined_player.player)) .. " as " .. player_name .. " before :O", Meteor, 12, 0x64FA7800)
-											file_found_index = true
-										else
-											menu.notify("I've seen " .. tostring(player.get_player_name(joined_player.player)) .. " with different info before :O", Meteor, 12, 0x64FA7800)
-											file_found_index = true
+		if listeners["» Remember Players"] == nil then
+			listeners["» Remember Players"] = event.add_event_listener("player_join", function(joined_player)
+				if player.is_player_valid(joined_player.player) then
+					if joined_player.player ~= player.player_id() and not string.find(player.get_player_name(joined_player.player), "|") then
+						if utils.file_exists(utils.get_appdata_path("PopstarDevs", "2Take1Menu").."\\scripts\\Meteor\\Data\\RememberedPlayers.log") then
+							local file = io.open(utils.get_appdata_path("PopstarDevs", "2Take1Menu").."\\scripts\\Meteor\\Data\\RememberedPlayers.log", "r")
+							local file_found_index = false
+							local all_lines = 0
+							for line in file:lines() do
+								all_lines = all_lines + 1
+								if not file_found_index then
+									if string.find(line, "|") then
+										local parts = text_func.split_string(line, "|")
+										local player_name = parts[1]
+										local player_scid = tonumber(parts[2])
+										local player_ip = tonumber(parts[3])
+										local player_net_hash = tonumber(parts[4])
+										local guilty = false
+										if player_net_hash == network.network_hash_from_player(joined_player.player) and (tostring(player_name) ~= tostring(player.get_player_name(joined_player.player)) or player_scid ~= player.get_player_scid(joined_player.player) or player_ip ~= player.get_player_ip(joined_player.player)) then
+											guilty = true
+										end
+										if player_scid == player.get_player_scid(joined_player.player) and (tostring(player_name) ~= tostring(player.get_player_name(joined_player.player)) or player_net_hash ~= network.network_hash_from_player(joined_player.player) or player_ip ~= player.get_player_ip(joined_player.player)) then
+											guilty = true
+										end
+										if tostring(player_name) == tostring(player.get_player_name(joined_player.player)) and (tostring(player_name) ~= tostring(player.get_player_name(joined_player.player)) or player_net_hash ~= network.network_hash_from_player(joined_player.player) or player_ip ~= player.get_player_ip(joined_player.player)) then
+											guilty = true
+										end
+										if guilty then
+											if tostring(player_name) ~= tostring(player.get_player_name(joined_player.player)) then
+												menu.notify("I've seen " .. tostring(player.get_player_name(joined_player.player)) .. " as " .. player_name .. " before :O", Meteor, 12, 0x64FA7800)
+												file_found_index = true
+											else
+												menu.notify("I've seen " .. tostring(player.get_player_name(joined_player.player)) .. " with different info before :O", Meteor, 12, 0x64FA7800)
+												file_found_index = true
+											end
 										end
 									end
 								end
 							end
-						end
-						if all_lines > 1000 then
-							text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\Meteor\\Data\\", "") .. "\\RememberedPlayers.log", "w"), "")
+							if all_lines > 1000 then
+								text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\Meteor\\Data\\", "") .. "\\RememberedPlayers.log", "w"), "")
+							end
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Remember Players"] then
@@ -7157,16 +7289,18 @@ localparents["» Player Activity"] = menu.add_feature("» Player Activity", "par
 feature["» Notify Typing Players"] = menu.add_feature("» Notify Typing Players", "toggle", localparents["» Player Activity"].id, function(f)
 	settings["» Notify Typing Players"].Enabled = f.on
 	if f.on then
-		eventhooks["» Notify Typing Players"] = hook.register_script_event_hook(function(source, target, params, count)
-			for i = 1, #params do
-				params[i] = params[i] & 0xFFFFFFFF
-			end
-			if params[1] == 0x2C8A72D0 then
-				menu.notify(tostring(player.get_player_name(source)) .. " started typing", Meteor, 2, 0x64FA7800)
-			elseif params[1] == 0xC4EF2D0B then
-				menu.notify(tostring(player.get_player_name(source)) .. " stopped typing", Meteor, 2, 0x64FA7800)
-			end
-		end)
+		if eventhooks["» Notify Typing Players"] == nil then
+			eventhooks["» Notify Typing Players"] = hook.register_script_event_hook(function(source, target, params, count)
+				for i = 1, #params do
+					params[i] = params[i] & 0xFFFFFFFF
+				end
+				if params[1] == 0x2C8A72D0 then
+					menu.notify(tostring(player.get_player_name(source)) .. " started typing", Meteor, 2, 0x64FA7800)
+				elseif params[1] == 0xC4EF2D0B then
+					menu.notify(tostring(player.get_player_name(source)) .. " stopped typing", Meteor, 2, 0x64FA7800)
+				end
+			end)
+		end
 	end
 	if not f.on then
 		if eventhooks["» Notify Typing Players"] then
@@ -7217,16 +7351,18 @@ end)
 feature["» Vpn/Proxy Player Check"] = menu.add_feature("» Vpn/Proxy Player Check", "toggle", localparents["» Player Activity"].id, function(f, pid)
 	settings["» Vpn/Proxy Player Check"].Enabled = f.on
 	if f.on then
-		listeners["» Vpn/Proxy Player Check"] = event.add_event_listener("player_join", function(joined_player)
-			if joined_player.player ~= player.player_id() and player.is_player_valid(joined_player.player) then
-				local success, webdata = web.get("http://ip-api.com/json/" .. utilities.dec_to_ipv4(player.get_player_ip(joined_player.player)) .. "?fields=147456")
-				if string.find(webdata, "proxy") and not success == "429" then
-					if text_func.string_cut(webdata, "\"proxy\":", "}") == "true" then
-						menu.notify(tostring(joined_player.player) .. "is using a Vpn!\n" .. player.get_player_scid(joined_player.player) .. "/" .. utilities.dec_to_ipv4(player.get_player_ip(joined_player.player)) .. "", Meteor, 12, 0x64FA7800)
+		if listeners["» Vpn/Proxy Player Check"] == nil then
+			listeners["» Vpn/Proxy Player Check"] = event.add_event_listener("player_join", function(joined_player)
+				if joined_player.player ~= player.player_id() and player.is_player_valid(joined_player.player) then
+					local success, webdata = web.get("http://ip-api.com/json/" .. utilities.dec_to_ipv4(player.get_player_ip(joined_player.player)) .. "?fields=147456")
+					if string.find(webdata, "proxy") and not success == "429" then
+						if text_func.string_cut(webdata, "\"proxy\":", "}") == "true" then
+							menu.notify(tostring(joined_player.player) .. "is using a Vpn!\n" .. player.get_player_scid(joined_player.player) .. "/" .. utilities.dec_to_ipv4(player.get_player_ip(joined_player.player)) .. "", Meteor, 12, 0x64FA7800)
+						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Vpn/Proxy Player Check"] then
@@ -7240,15 +7376,17 @@ end)
 feature["» Notify Orbital Cannon Room Events"] = menu.add_feature("» Notify Orbital Cannon Room Events", "toggle", localparents["» Player Activity"].id, function(f, pid)
 	settings["» Notify Orbital Cannon Room Events"].Enabled = f.on
     if f.on then
-		eventhooks["» Notify Orbital Cannon Room Events"] = hook.register_net_event_hook(function(source, target, eventId)
-			if eventId == NetEventID["NETWORK_PTFX_EVENT"] then
-				if player.is_player_valid(source) then
-					if IsInOrbitalCannonRoom[source] then
-						menu.notify("" .. tostring(player.get_player_name(source)) .. " called an Orbital Strike!", Meteor, 8, 0x64FA7800)
+		if eventhooks["» Notify Orbital Cannon Room Events"] == nil then
+			eventhooks["» Notify Orbital Cannon Room Events"] = hook.register_net_event_hook(function(source, target, eventId)
+				if eventId == NetEventID["NETWORK_PTFX_EVENT"] then
+					if player.is_player_valid(source) then
+						if IsInOrbitalCannonRoom[source] then
+							menu.notify("" .. tostring(player.get_player_name(source)) .. " called an Orbital Strike!", Meteor, 8, 0x64FA7800)
+						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 		for i = 0, 31 do
 			IsInOrbitalCannonRoom[i] = false
 			IsNotInOrbitalCannonRoom[i] = true
@@ -7612,76 +7750,78 @@ feature["» Player Info Tab"] = menu.add_feature("» Player Info Tab", "toggle",
 	if f.on then
 		while f.on do
 			system.yield(0)
-			pos_y = (settings["» Tab 1 Y Position"].Value or 0) / 100
-			for pid = 0, 15 do
-				if player.is_player_valid(pid) then
-					ui.set_text_scale(0.24)
-					ui.set_text_font(4)
-					ui.set_text_centre(0)
-					ui.set_text_outline(true)
-					if script_func.get_player_ceo_int(pid) == 10 then
-						ui.set_text_color(30, 100, 152, (settings["» Tab 1 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 9 then
-						ui.set_text_color(216, 85, 117, (settings["» Tab 1 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 8 then
-						ui.set_text_color(0, 132, 114, (settings["» Tab 1 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 7 then
-						ui.set_text_color(178, 144, 132, (settings["» Tab 1 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 6 then
-						ui.set_text_color(181, 214, 234, (settings["» Tab 1 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 5 then
-						ui.set_text_color(141, 206, 167, (settings["» Tab 1 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 4 then
-						ui.set_text_color(160, 140, 193, (settings["» Tab 1 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 3 then
-						ui.set_text_color(113, 169, 175, (settings["» Tab 1 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 2 then
-						ui.set_text_color(239, 238, 151, (settings["» Tab 1 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 1 then
-						ui.set_text_color(226, 134, 187, (settings["» Tab 1 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 0 then
-						ui.set_text_color(247, 159, 123, (settings["» Tab 1 Alpha"].Value or 255))
-					else
-						ui.set_text_color(255, 255, 255, (settings["» Tab 1 Alpha"].Value or 255))
+			if not utilities.is_phone_open() then
+				local pos_y = (settings["» Tab 1 Y Position"].Value or 0) / 100
+				for pid = 0, 15 do
+					if player.is_player_valid(pid) then
+						ui.set_text_scale(0.24)
+						ui.set_text_font(4)
+						ui.set_text_centre(0)
+						ui.set_text_outline(true)
+						if script_func.get_player_ceo_int(pid) == 10 then
+							ui.set_text_color(30, 100, 152, (settings["» Tab 1 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 9 then
+							ui.set_text_color(216, 85, 117, (settings["» Tab 1 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 8 then
+							ui.set_text_color(0, 132, 114, (settings["» Tab 1 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 7 then
+							ui.set_text_color(178, 144, 132, (settings["» Tab 1 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 6 then
+							ui.set_text_color(181, 214, 234, (settings["» Tab 1 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 5 then
+							ui.set_text_color(141, 206, 167, (settings["» Tab 1 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 4 then
+							ui.set_text_color(160, 140, 193, (settings["» Tab 1 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 3 then
+							ui.set_text_color(113, 169, 175, (settings["» Tab 1 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 2 then
+							ui.set_text_color(239, 238, 151, (settings["» Tab 1 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 1 then
+							ui.set_text_color(226, 134, 187, (settings["» Tab 1 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 0 then
+							ui.set_text_color(247, 159, 123, (settings["» Tab 1 Alpha"].Value or 255))
+						else
+							ui.set_text_color(255, 255, 255, (settings["» Tab 1 Alpha"].Value or 255))
+						end
+						ui.draw_text("[" .. script_func.get_player_ceo_int(pid) .. "] " .. player_func.get_player_flag_string(pid) .. " " .. player.get_player_name(pid) .. " {ID: " .. pid .. "} {Rank: " .. script_func.get_player_rank(pid) .. "} {" .. script_func.get_player_money_str(pid) .. "} {KD: " .. text_func.round_two_dc(script_func.get_player_kd(pid)) .. "} {Ping: " .. text_func.round(natives.NETWORK_GET_AVERAGE_LATENCY_FOR_PLAYER_2(pid):__tonumber()) .. "} {PkgL: %" .. text_func.round(natives.NETWORK_GET_AVERAGE_PACKET_LOSS_FOR_PLAYER(pid):__tonumber()) .. "}", v2((settings["» Tab 1 X Position"].Value or 35) / 100, pos_y))
+						pos_y = pos_y + 0.017
 					end
-					ui.draw_text("[" .. script_func.get_player_ceo_int(pid) .. "] " .. player_func.get_player_flag_string(pid) .. " " .. player.get_player_name(pid) .. " {ID: " .. pid .. "} {Rank: " .. script_func.get_player_rank(pid) .. "} {" .. script_func.get_player_money_str(pid) .. "} {Priority: " .. player.get_player_host_priority(pid) .. "} {KD: " .. text_func.round_two_dc(script_func.get_player_kd(pid)) .. "} {LAT: " .. text_func.round(natives.NETWORK_GET_AVERAGE_LATENCY_FOR_PLAYER_2(pid):__tonumber()) .. "}", v2((settings["» Tab 1 X Position"].Value or 35) / 100, pos_y))
-					pos_y = pos_y + 0.017
 				end
-			end
-			pos_y = (settings["» Tab 2 Y Position"].Value or 0) / 100
-			for pid = 16, 31 do
-				if player.is_player_valid(pid) then
-					ui.set_text_scale(0.24)
-					ui.set_text_font(4)
-					ui.set_text_centre(0)
-					ui.set_text_outline(true)
-					if script_func.get_player_ceo_int(pid) == 10 then
-						ui.set_text_color(30, 100, 152, (settings["» Tab 2 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 9 then
-						ui.set_text_color(216, 85, 117, (settings["» Tab 2 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 8 then
-						ui.set_text_color(0, 132, 114, (settings["» Tab 2 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 7 then
-						ui.set_text_color(178, 144, 132, (settings["» Tab 2 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 6 then
-						ui.set_text_color(181, 214, 234, (settings["» Tab 2 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 5 then
-						ui.set_text_color(141, 206, 167, (settings["» Tab 2 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 4 then
-						ui.set_text_color(160, 140, 193, (settings["» Tab 2 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 3 then
-						ui.set_text_color(113, 169, 175, (settings["» Tab 2 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 2 then
-						ui.set_text_color(239, 238, 151, (settings["» Tab 2 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 1 then
-						ui.set_text_color(226, 134, 187, (settings["» Tab 2 Alpha"].Value or 255))
-					elseif script_func.get_player_ceo_int(pid) == 0 then
-						ui.set_text_color(247, 159, 123, (settings["» Tab 2 Alpha"].Value or 255))
-					else
-						ui.set_text_color(255, 255, 255, (settings["» Tab 2 Alpha"].Value or 255))
+				local pos_y = (settings["» Tab 2 Y Position"].Value or 0) / 100
+				for pid = 16, 31 do
+					if player.is_player_valid(pid) then
+						ui.set_text_scale(0.24)
+						ui.set_text_font(4)
+						ui.set_text_centre(0)
+						ui.set_text_outline(true)
+						if script_func.get_player_ceo_int(pid) == 10 then
+							ui.set_text_color(30, 100, 152, (settings["» Tab 2 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 9 then
+							ui.set_text_color(216, 85, 117, (settings["» Tab 2 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 8 then
+							ui.set_text_color(0, 132, 114, (settings["» Tab 2 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 7 then
+							ui.set_text_color(178, 144, 132, (settings["» Tab 2 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 6 then
+							ui.set_text_color(181, 214, 234, (settings["» Tab 2 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 5 then
+							ui.set_text_color(141, 206, 167, (settings["» Tab 2 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 4 then
+							ui.set_text_color(160, 140, 193, (settings["» Tab 2 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 3 then
+							ui.set_text_color(113, 169, 175, (settings["» Tab 2 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 2 then
+							ui.set_text_color(239, 238, 151, (settings["» Tab 2 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 1 then
+							ui.set_text_color(226, 134, 187, (settings["» Tab 2 Alpha"].Value or 255))
+						elseif script_func.get_player_ceo_int(pid) == 0 then
+							ui.set_text_color(247, 159, 123, (settings["» Tab 2 Alpha"].Value or 255))
+						else
+							ui.set_text_color(255, 255, 255, (settings["» Tab 2 Alpha"].Value or 255))
+						end
+						ui.draw_text("[" .. script_func.get_player_ceo_int(pid) .. "] " .. player_func.get_player_flag_string(pid) .. " " .. player.get_player_name(pid) .. " {ID: " .. pid .. "} {Rank: " .. script_func.get_player_rank(pid) .. "} {" .. script_func.get_player_money_str(pid) .. "} {KD: " .. text_func.round_two_dc(script_func.get_player_kd(pid)) .. "} {Ping: " .. text_func.round(natives.NETWORK_GET_AVERAGE_LATENCY_FOR_PLAYER_2(pid):__tonumber()) .. "} {PkgL: %" .. text_func.round(natives.NETWORK_GET_AVERAGE_PACKET_LOSS_FOR_PLAYER(pid):__tonumber()) .. "}", v2((settings["» Tab 2 X Position"].Value or 65) / 100, pos_y))
+						pos_y = pos_y + 0.017
 					end
-					ui.draw_text("[" .. script_func.get_player_ceo_int(pid) .. "] " .. player_func.get_player_flag_string(pid) .. " " .. player.get_player_name(pid) .. " {ID: " .. pid .. "} {Rank: " .. script_func.get_player_rank(pid) .. "} {" .. script_func.get_player_money_str(pid) .. "} {Priority: " .. player.get_player_host_priority(pid) .. "} {KD: " .. text_func.round_two_dc(script_func.get_player_kd(pid)) .. "} {LAT: " .. text_func.round(natives.NETWORK_GET_AVERAGE_LATENCY_FOR_PLAYER_2(pid):__tonumber()) .. "}", v2((settings["» Tab 2 X Position"].Value or 65) / 100, pos_y))
-					pos_y = pos_y + 0.017
 				end
 			end
 		end
@@ -8453,11 +8593,13 @@ feature["» Anti Chat Spam"] = menu.add_feature("» Anti Chat Spam", "value_str"
 		for i = 0, 31 do
 			SentXMessagesInTheLast5Seconds[i] = 0
 		end
-		listeners["» Anti Chat Spam"] = event.add_event_listener("chat", function(chat_message)
-			if chat_message.player ~= player.player_id() then
-				SentXMessagesInTheLast5Seconds[chat_message.player] = SentXMessagesInTheLast5Seconds[chat_message.player] + 1
-			end
-		end)
+		if listeners["» Anti Chat Spam"] == nil then
+			listeners["» Anti Chat Spam"] = event.add_event_listener("chat", function(chat_message)
+				if chat_message.player ~= player.player_id() then
+					SentXMessagesInTheLast5Seconds[chat_message.player] = SentXMessagesInTheLast5Seconds[chat_message.player] + 1
+				end
+			end)
+		end
 		while f.on do
 			system.yield(5000)
 			for pid = 0, 31 do
@@ -8531,106 +8673,108 @@ feature["» Anti Ur Mom"] = menu.add_feature("» Anti \"Ur Mom\"", "value_str", 
 	settings["» Anti Ur Mom"].Enabled = f.on
 	settings["» Anti Ur Mom"].Value = f.value
 	if f.on then
-		listeners["» Anti Ur Mom"] = event.add_event_listener("chat", function(chat_message)
-			local message_body = "" .. chat_message.body .. ""
-			if (string.find(message_body:lower(), "ur mom") or string.find(message_body:lower(), "your mom") or string.find(message_body:lower(), "yo mom") or string.find(message_body:lower(), "yo momma") or string.find(message_body:lower(), "yo moma") or string.find(message_body:lower(), "ur momma") or string.find(message_body:lower(), "your momma") or string.find(message_body:lower(), "jo mom") or string.find(message_body:lower(), "jo momma")) and chat_message.player ~= player.player_id() then
-				if f.value == 0 then
-					fire.add_explosion(player.get_player_coords(chat_message.player), 0, true, false, 0, 0)
-					menu.notify("Exploded a 'Ur Mom' shithead\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
-				elseif f.value == 1 then
-					menu.notify("Kicked a 'Ur Mom' shithead\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
-					if network.network_is_host() then
-						network.network_session_kick_player(chat_message.player)
-					elseif player.is_player_host(chat_message.player) and player.is_player_modder(chat_message.player, -1) then
-						script_func.script_event_kick(chat_message.player)
-					else
-						network.force_remove_player(chat_message.player)
-					end
-					system.wait(4000)
-				elseif f.value == 2 then
-					script_func.script_event_crash(chat_message.player)
-					menu.notify("Crashed a 'Ur Mom' shithead\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
-					system.wait(6000)
-				elseif f.value == 3 then
-					if player.is_player_valid(chat_message.player) then
-						utilities.request_model(0x303638A7)
-						local table_of_all_peds = {}
-						local table_of_all_vehicles = {}
-						local hashes = {956849991, 1133471123, 2803699023, 386089410, 1549009676}
-						local yo_momma = ped.create_ped(0, 0x303638A7, player.get_player_coords(chat_message.player) + v3(300, 300, 300), entity.get_entity_heading(player.get_player_ped(chat_message.player)), true, false)
-						network.request_control_of_entity(yo_momma)
-						for i = 1, 5 do
-							table_of_all_peds[i] = ped.create_ped(0, 0x3F039CBA, player.get_player_coords(chat_message.player) + v3(300, 300, 300), 0, true, false)
-							network.request_control_of_entity(table_of_all_peds[i])
-							entity.attach_entity_to_entity(table_of_all_peds[i], yo_momma, 0, v3(0, 0, 0), v3(0, 0, 0), true, false, true, 0, true)
-							table_of_all_peds[i + 5] = ped.create_ped(0, 0x856CFB02, player.get_player_coords(chat_message.player) + v3(300, 300, 300), 0, true, false)
-							network.request_control_of_entity(table_of_all_peds[i + 5])
-							entity.attach_entity_to_entity(table_of_all_peds[i + 5], yo_momma, 0, v3(0, 0, 0), v3(0, 0, 0), true, false, true, 0, true)
-							table_of_all_peds[i + 10] = ped.create_ped(0, 0x2D7030F3, player.get_player_coords(chat_message.player) + v3(300, 300, 300), 0, true, false)
-							network.request_control_of_entity(table_of_all_peds[i + 10])
-							entity.attach_entity_to_entity(table_of_all_peds[i + 10], yo_momma, 0, v3(0, 0, 0), v3(0, 0, 0), true, false, true, 0, true)
+		if listeners["» Anti Ur Mom"] == nil then
+			listeners["» Anti Ur Mom"] = event.add_event_listener("chat", function(chat_message)
+				local message_body = "" .. chat_message.body .. ""
+				if (string.find(message_body:lower(), "ur mom") or string.find(message_body:lower(), "your mom") or string.find(message_body:lower(), "yo mom") or string.find(message_body:lower(), "yo momma") or string.find(message_body:lower(), "yo moma") or string.find(message_body:lower(), "ur momma") or string.find(message_body:lower(), "your momma") or string.find(message_body:lower(), "jo mom") or string.find(message_body:lower(), "jo momma")) and chat_message.player ~= player.player_id() then
+					if f.value == 0 then
+						fire.add_explosion(player.get_player_coords(chat_message.player), 0, true, false, 0, 0)
+						menu.notify("Exploded a 'Ur Mom' shithead\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
+					elseif f.value == 1 then
+						menu.notify("Kicked a 'Ur Mom' shithead\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
+						if network.network_is_host() then
+							network.network_session_kick_player(chat_message.player)
+						elseif player.is_player_host(chat_message.player) and player.is_player_modder(chat_message.player, -1) then
+							script_func.script_event_kick(chat_message.player)
+						else
+							network.force_remove_player(chat_message.player)
 						end
-						for i = 1, #hashes do
-							utilities.request_model(hashes[i])
-							table_of_all_vehicles[i] = vehicle.create_vehicle(hashes[i], player.get_player_coords(chat_message.player) + v3(300, 300, 300), 0, true, false)
-							network.request_control_of_entity(table_of_all_vehicles[i])
-							entity.attach_entity_to_entity(table_of_all_vehicles[i], yo_momma, 0, v3(0, 0, 0), v3(0, 0, 0), true, false, false, 0, true)
-						end
-						system.wait(0)
-						network.request_control_of_entity(yo_momma)
-						entity.set_entity_coords_no_offset(yo_momma, player.get_player_coords(chat_message.player))
-						system.wait(2000)
-						for i = 1, 15 do
-							if entity.is_an_entity(table_of_all_peds[i]) then
-								network.request_control_of_entity(table_of_all_peds[i])
-								entity.delete_entity(table_of_all_peds[i])
-							end
-						end
-						for i = 1, 5 do
-							if entity.is_an_entity(table_of_all_vehicles[i]) then
-								network.request_control_of_entity(table_of_all_vehicles[i])
-								entity.delete_entity(table_of_all_vehicles[i])
-							end
-						end
-						if yo_momma then
-							network.request_control_of_entity(yo_momma)
-							utilities.hard_remove_entity(yo_momma)
-						end
-						system.wait(1)
-						script.trigger_script_event(-371781708, chat_message.player, {player.player_id(), 0, 0, 1403904671})
-						system.wait(1)
-						script.trigger_script_event(-317318371, chat_message.player, {player.player_id(), 0, 0, 1993236673})
-						system.wait(1)
-						script.trigger_script_event(911179316, chat_message.player, {player.player_id(), 0, 0, 0, 1234567990, 0, 0})
-						system.wait(1)
-						script.trigger_script_event(846342319, chat_message.player, {player.player_id(), 578162304, 1})
-						system.wait(1)
-						script.trigger_script_event(-2085853000, chat_message.player, {player.player_id(), 0, 1610781286, 0, 0})
-						system.wait(1)
-						script.trigger_script_event(-1991317864, chat_message.player, {player.player_id(), 0, 935764694, 0, 0})
-						system.wait(1)
-						script.trigger_script_event(-1970125962, chat_message.player, {player.player_id(), 0, 1171952288})
-						system.wait(1)
-						script.trigger_script_event(-1013679841, chat_message.player, {player.player_id(), 0, 2135167326, 0})
-						system.wait(1)
-						script.trigger_script_event(-1892343528, chat_message.player, {player.player_id(), math.random(-2147483647, 2147483647)})
-						system.wait(1)
-						script.trigger_script_event(1494472464, chat_message.player, {player.player_id(), math.random(-2147483647, 2147483647)})
-						system.wait(1)
-						script.trigger_script_event(69874647, chat_message.player, {player.player_id(), math.random(-2147483647, 2147483647)})
-						system.wait(1)
-						script.trigger_script_event(998716537, chat_message.player, {player.player_id(), math.random(-2147483647, 2147483647)})
-						system.wait(1)
-						script.trigger_script_event(1514515570, chat_message.player, {player.player_id(), 0, 2147483647})
-						system.wait(1)
-						script.trigger_script_event(296518236, chat_message.player, {player.player_id(), 0, 0, 0, 1})
-						system.wait(1)
+						system.wait(4000)
+					elseif f.value == 2 then
+						script_func.script_event_crash(chat_message.player)
 						menu.notify("Crashed a 'Ur Mom' shithead\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
 						system.wait(6000)
+					elseif f.value == 3 then
+						if player.is_player_valid(chat_message.player) then
+							utilities.request_model(0x303638A7)
+							local table_of_all_peds = {}
+							local table_of_all_vehicles = {}
+							local hashes = {956849991, 1133471123, 2803699023, 386089410, 1549009676}
+							local yo_momma = ped.create_ped(0, 0x303638A7, player.get_player_coords(chat_message.player) + v3(300, 300, 300), entity.get_entity_heading(player.get_player_ped(chat_message.player)), true, false)
+							network.request_control_of_entity(yo_momma)
+							for i = 1, 5 do
+								table_of_all_peds[i] = ped.create_ped(0, 0x3F039CBA, player.get_player_coords(chat_message.player) + v3(300, 300, 300), 0, true, false)
+								network.request_control_of_entity(table_of_all_peds[i])
+								entity.attach_entity_to_entity(table_of_all_peds[i], yo_momma, 0, v3(0, 0, 0), v3(0, 0, 0), true, false, true, 0, true)
+								table_of_all_peds[i + 5] = ped.create_ped(0, 0x856CFB02, player.get_player_coords(chat_message.player) + v3(300, 300, 300), 0, true, false)
+								network.request_control_of_entity(table_of_all_peds[i + 5])
+								entity.attach_entity_to_entity(table_of_all_peds[i + 5], yo_momma, 0, v3(0, 0, 0), v3(0, 0, 0), true, false, true, 0, true)
+								table_of_all_peds[i + 10] = ped.create_ped(0, 0x2D7030F3, player.get_player_coords(chat_message.player) + v3(300, 300, 300), 0, true, false)
+								network.request_control_of_entity(table_of_all_peds[i + 10])
+								entity.attach_entity_to_entity(table_of_all_peds[i + 10], yo_momma, 0, v3(0, 0, 0), v3(0, 0, 0), true, false, true, 0, true)
+							end
+							for i = 1, #hashes do
+								utilities.request_model(hashes[i])
+								table_of_all_vehicles[i] = vehicle.create_vehicle(hashes[i], player.get_player_coords(chat_message.player) + v3(300, 300, 300), 0, true, false)
+								network.request_control_of_entity(table_of_all_vehicles[i])
+								entity.attach_entity_to_entity(table_of_all_vehicles[i], yo_momma, 0, v3(0, 0, 0), v3(0, 0, 0), true, false, false, 0, true)
+							end
+							system.wait(0)
+							network.request_control_of_entity(yo_momma)
+							entity.set_entity_coords_no_offset(yo_momma, player.get_player_coords(chat_message.player))
+							system.wait(2000)
+							for i = 1, 15 do
+								if entity.is_an_entity(table_of_all_peds[i]) then
+									network.request_control_of_entity(table_of_all_peds[i])
+									entity.delete_entity(table_of_all_peds[i])
+								end
+							end
+							for i = 1, 5 do
+								if entity.is_an_entity(table_of_all_vehicles[i]) then
+									network.request_control_of_entity(table_of_all_vehicles[i])
+									entity.delete_entity(table_of_all_vehicles[i])
+								end
+							end
+							if yo_momma then
+								network.request_control_of_entity(yo_momma)
+								utilities.hard_remove_entity(yo_momma)
+							end
+							system.wait(1)
+							script.trigger_script_event(-371781708, chat_message.player, {player.player_id(), 0, 0, 1403904671})
+							system.wait(1)
+							script.trigger_script_event(-317318371, chat_message.player, {player.player_id(), 0, 0, 1993236673})
+							system.wait(1)
+							script.trigger_script_event(911179316, chat_message.player, {player.player_id(), 0, 0, 0, 1234567990, 0, 0})
+							system.wait(1)
+							script.trigger_script_event(846342319, chat_message.player, {player.player_id(), 578162304, 1})
+							system.wait(1)
+							script.trigger_script_event(-2085853000, chat_message.player, {player.player_id(), 0, 1610781286, 0, 0})
+							system.wait(1)
+							script.trigger_script_event(-1991317864, chat_message.player, {player.player_id(), 0, 935764694, 0, 0})
+							system.wait(1)
+							script.trigger_script_event(-1970125962, chat_message.player, {player.player_id(), 0, 1171952288})
+							system.wait(1)
+							script.trigger_script_event(-1013679841, chat_message.player, {player.player_id(), 0, 2135167326, 0})
+							system.wait(1)
+							script.trigger_script_event(-1892343528, chat_message.player, {player.player_id(), math.random(-2147483647, 2147483647)})
+							system.wait(1)
+							script.trigger_script_event(1494472464, chat_message.player, {player.player_id(), math.random(-2147483647, 2147483647)})
+							system.wait(1)
+							script.trigger_script_event(69874647, chat_message.player, {player.player_id(), math.random(-2147483647, 2147483647)})
+							system.wait(1)
+							script.trigger_script_event(998716537, chat_message.player, {player.player_id(), math.random(-2147483647, 2147483647)})
+							system.wait(1)
+							script.trigger_script_event(1514515570, chat_message.player, {player.player_id(), 0, 2147483647})
+							system.wait(1)
+							script.trigger_script_event(296518236, chat_message.player, {player.player_id(), 0, 0, 0, 1})
+							system.wait(1)
+							menu.notify("Crashed a 'Ur Mom' shithead\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
+							system.wait(6000)
+						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 		if not f.on then
 			if listeners["» Anti Ur Mom"] then
 				event.remove_event_listener("chat", listeners["» Anti Ur Mom"])
@@ -8783,42 +8927,44 @@ feature["» Anti East Ukraine"] = menu.add_feature("» Anti East Ukraine", "valu
 	settings["» Anti East Ukraine"].Enabled = f.on
 	settings["» Anti East Ukraine"].Value = f.value
 	if f.on then
-		listeners["» Anti East Ukraine"] = event.add_event_listener("chat", function(chat_message)
-			if chat_message.player ~= player.player_id() then
-				local guilty = false
-				for i = 1, #DataMain.all_russian_characters do
-					if string.find(chat_message.body, DataMain.all_russian_characters[i]) then
-						guilty = true
-					end
-					if guilty then
-						if player.get_player_name(chat_message.player) ~= nil and player.get_player_scid(chat_message.player) ~= -1 then
-							if f.value == 0 then
-								fire.add_explosion(player.get_player_coords(chat_message.player), 0, true, false, 0, 0)
-								menu.notify("Exploded a Russian Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
-							elseif f.value == 1 then
-								menu.notify("Kicked a Russian Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
-								if network.network_is_host() then
-									network.network_session_kick_player(chat_message.player)
-								elseif player.is_player_host(chat_message.player) and player.is_player_modder(chat_message.player, -1) then
-									script_func.script_event_kick(chat_message.player)
-								else
-									network.force_remove_player(chat_message.player)
+		if listeners["» Anti East Ukraine"] == nil then
+			listeners["» Anti East Ukraine"] = event.add_event_listener("chat", function(chat_message)
+				if chat_message.player ~= player.player_id() then
+					local guilty = false
+					for i = 1, #DataMain.all_russian_characters do
+						if string.find(chat_message.body, DataMain.all_russian_characters[i]) then
+							guilty = true
+						end
+						if guilty then
+							if player.get_player_name(chat_message.player) ~= nil and player.get_player_scid(chat_message.player) ~= -1 then
+								if f.value == 0 then
+									fire.add_explosion(player.get_player_coords(chat_message.player), 0, true, false, 0, 0)
+									menu.notify("Exploded a Russian Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
+								elseif f.value == 1 then
+									menu.notify("Kicked a Russian Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
+									if network.network_is_host() then
+										network.network_session_kick_player(chat_message.player)
+									elseif player.is_player_host(chat_message.player) and player.is_player_modder(chat_message.player, -1) then
+										script_func.script_event_kick(chat_message.player)
+									else
+										network.force_remove_player(chat_message.player)
+									end
+									system.wait(4000)
+								elseif f.value == 2 then
+									script_func.script_event_crash(chat_message.player)
+									menu.notify("Crashed a Russian Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
+									system.wait(4000)
+								elseif f.value == 3 then
+									menu.notify("Sent a Russian Speaker to brazil\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
+									script_func.send_to_brazil(chat_message.player)
+									system.wait(4000)
 								end
-								system.wait(4000)
-							elseif f.value == 2 then
-								script_func.script_event_crash(chat_message.player)
-								menu.notify("Crashed a Russian Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
-								system.wait(4000)
-							elseif f.value == 3 then
-								menu.notify("Sent a Russian Speaker to brazil\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
-								script_func.send_to_brazil(chat_message.player)
-								system.wait(4000)
 							end
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 		while f.on do
 			if network.is_session_started() then
 				for pid = 0, 31 do
@@ -8873,42 +9019,44 @@ feature["» Anti West Taiwan"] = menu.add_feature("» Anti West Taiwan", "value_
 	settings["» Anti West Taiwan"].Enabled = f.on
 	settings["» Anti West Taiwan"].Value = f.value
 	if f.on then
-		listeners["» Anti West Taiwan"] = event.add_event_listener("chat", function(chat_message)
-			if chat_message.player ~= player.player_id() then
-				local guilty = false
-				for i = 1, #DataMain.all_communist_characters do
-					if string.find(chat_message.body, DataMain.all_communist_characters[i]) then
-						guilty = true
+		if listeners["» Anti West Taiwan"] == nil then
+			listeners["» Anti West Taiwan"] = event.add_event_listener("chat", function(chat_message)
+				if chat_message.player ~= player.player_id() then
+					local guilty = false
+					for i = 1, #DataMain.all_communist_characters do
+						if string.find(chat_message.body, DataMain.all_communist_characters[i]) then
+							guilty = true
+						end
 					end
-				end
-				if guilty then
-					if player.get_player_name(chat_message.player) ~= nil and player.get_player_scid(chat_message.player) ~= -1 then
-						if f.value == 0 then
-							fire.add_explosion(player.get_player_coords(chat_message.player), 0, true, false, 0, 0)
-							menu.notify("Exploded a Chinese Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
-						elseif f.value == 1 then
-							menu.notify("Kicked a Chinese Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
-							if network.network_is_host() then
-								network.network_session_kick_player(chat_message.player)
-							elseif player.is_player_host(chat_message.player) and player.is_player_modder(chat_message.player, -1) then
-								script_func.script_event_kick(chat_message.player)
-							else
-								network.force_remove_player(chat_message.player)
+					if guilty then
+						if player.get_player_name(chat_message.player) ~= nil and player.get_player_scid(chat_message.player) ~= -1 then
+							if f.value == 0 then
+								fire.add_explosion(player.get_player_coords(chat_message.player), 0, true, false, 0, 0)
+								menu.notify("Exploded a Chinese Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
+							elseif f.value == 1 then
+								menu.notify("Kicked a Chinese Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
+								if network.network_is_host() then
+									network.network_session_kick_player(chat_message.player)
+								elseif player.is_player_host(chat_message.player) and player.is_player_modder(chat_message.player, -1) then
+									script_func.script_event_kick(chat_message.player)
+								else
+									network.force_remove_player(chat_message.player)
+								end
+								system.wait(4000)
+							elseif f.value == 2 then
+								script_func.script_event_crash(chat_message.player)
+								menu.notify("Crashed a Chinese Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
+								system.wait(4000)
+							elseif f.value == 3 then
+								menu.notify("Sent a Chinese Speaker to brazil\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
+								script_func.send_to_brazil(chat_message.player)
+								system.wait(4000)
 							end
-							system.wait(4000)
-						elseif f.value == 2 then
-							script_func.script_event_crash(chat_message.player)
-							menu.notify("Crashed a Chinese Speaker\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
-							system.wait(4000)
-						elseif f.value == 3 then
-							menu.notify("Sent a Chinese Speaker to brazil\n" .. tostring(player.get_player_name(chat_message.player)) .. "/" .. player.get_player_scid(chat_message.player) .. "", Meteor, 8, 0x64FA7800)
-							script_func.send_to_brazil(chat_message.player)
-							system.wait(4000)
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 		while f.on do
 			if network.is_session_started() then
 				for pid = 0, 31 do
@@ -8996,6 +9144,47 @@ end)
 feature["» Anti Level 8000"]:set_str_data({"Remove All Weapons", "Kick", "Crash"})
 feature["» Anti Level 8000"].value = 0
 
+feature["» Anti Down Syndrome"] = menu.add_feature("» Anti Down Syndrome", "value_str", localparents["» Anti Cringe"].id, function(f)
+	settings["» Anti Down Syndrome"].Enabled = f.on
+	settings["» Anti Down Syndrome"].Value = f.value
+	if f.on then
+		if eventhooks["» Anti Down Syndrome"] == nil then
+			eventhooks["» Anti Down Syndrome"] = hook.register_net_event_hook(function(source, target, eventId)
+				if eventId == 83 then
+					menu.notify("real " .. player.get_player_name(source) .. ": " .. eventId .. ", " .. NetEventID["REPORT_MYSELF_EVENT"])
+				end
+				if eventId == NetEventID["REPORT_MYSELF_EVENT"] then
+					if f.value == 0 then
+						menu.notify("Kicked Down Syndrome Fucker\n" .. tostring(player.get_player_name(source)) .. " / " .. player.get_player_scid(source) .. "", Meteor, 8, 0x64FA7800)
+						if network.network_is_host() then
+							network.network_session_kick_player(source)
+						elseif player.is_player_host(source) and player.is_player_modder(source, -1) then
+							script_func.script_event_kick(source)
+						else
+							network.force_remove_player(source)
+						end
+						system.wait(2000)
+					elseif f.value == 1 then
+						script_func.script_event_crash(source)
+						menu.notify("Crashed Down Syndrome Fucker\n" .. tostring(player.get_player_name(source)) .. " / " .. player.get_player_scid(source) .. "", Meteor, 8, 0x64FA7800)
+						system.wait(8000)
+					end
+				end
+			end)
+		end
+	end
+	if not f.on then
+		if eventhooks["» Anti Down Syndrome"] then
+			hook.remove_net_event_hook(eventhooks["» Anti Down Syndrome"])
+			eventhooks["» Anti Down Syndrome"] = nil
+		end
+	end
+	settings["» Anti Down Syndrome"].Enabled = f.on
+	settings["» Anti Down Syndrome"].Value = f.value
+end)
+feature["» Anti Down Syndrome"]:set_str_data({"Kick", "Crash"})
+feature["» Anti Down Syndrome"].value = 0
+
 feature["» Anti Submarine Missile"] = menu.add_feature("» Anti Submarine Missile", "toggle", localparents["» Anti Cringe"].id, function(f)
 	settings["» Anti Submarine Missile"].Enabled = f.on
 	if f.on then
@@ -9028,31 +9217,33 @@ end)
 localparents["» Net Event Responses"] = menu.add_feature("» Net Event Responses", "parent", localparents["» Session Malicious"].id)
 
 for i = 0, 87 do
-	feature["» Net Event Responses " .. i] = menu.add_feature("» " .. NetEventName[i], "value_str", localparents["» Net Event Responses"].id, function(f)
+	feature["» Net Event Responses " .. i] = menu.add_feature("» " .. UserNetEventName[i], "value_str", localparents["» Net Event Responses"].id, function(f)
 		settings["» Net Event Responses " .. i].Enabled = f.on
 		settings["» Net Event Responses " .. i].Value = f.value
 		if f.on then
-			eventhooks["» Net Event Responses " .. i] = hook.register_net_event_hook(function(source, target, eventId)
-				if eventId == NetEventID[NetEventName[i]] then
-					if target == player.player_id() and source ~= player.player_id() and player.is_player_valid(source) then
-						if f.value == 0 then
-							fire.add_explosion(player.get_player_coords(source), 0, true, false, 0.1, player.get_player_ped(player.player_id()))
-						elseif f.value == 1 then
-							if network.network_is_host() then
-								network.network_session_kick_player(source)
-							elseif player.is_player_host(source) and player.is_player_modder(source, -1) then
-								script_func.script_event_kick(source)
-							else
-								network.force_remove_player(source)
+			if eventhooks["» Net Event Responses " .. i] == nil then
+				eventhooks["» Net Event Responses " .. i] = hook.register_net_event_hook(function(source, target, eventId)
+					if eventId == NetEventID[NetEventName[i]] then
+						if target == player.player_id() and source ~= player.player_id() and player.is_player_valid(source) then
+							if f.value == 0 then
+								fire.add_explosion(player.get_player_coords(source), 0, true, false, 0.1, player.get_player_ped(player.player_id()))
+							elseif f.value == 1 then
+								if network.network_is_host() then
+									network.network_session_kick_player(source)
+								elseif player.is_player_host(source) and player.is_player_modder(source, -1) then
+									script_func.script_event_kick(source)
+								else
+									network.force_remove_player(source)
+								end
+							elseif f.value == 2 then
+								script_func.script_event_crash(source)
+							elseif f.value == 3 then
+								script_func.send_to_brazil(source)
 							end
-						elseif f.value == 2 then
-							script_func.script_event_crash(source)
-						elseif f.value == 3 then
-							script_func.send_to_brazil(source)
 						end
 					end
-				end
-			end)
+				end)
+			end
 		end
 		if not f.on then
 			if eventhooks["» Net Event Responses " .. i] then
@@ -9072,18 +9263,20 @@ localparents["» Auto Kick Modders"] = menu.add_feature("» Auto Kick Modders", 
 feature["» Auto Kick All Modders"] = menu.add_feature("» Auto Kick All Modders", "toggle", localparents["» Auto Kick Modders"].id, function(f)
 	settings["» Auto Kick All Modders"].Enabled = f.on
 	if f.on then
-		listeners["» Auto Kick All Modders"] = event.add_event_listener("modder", function(modder_player)
-			if player.is_player_valid(modder_player.player) and modder_player.player ~= player.player_id() then
-				menu.notify("Kicked Modder\nPlayer: " .. tostring(player.get_player_name(modder_player.player)) .. "\nFlag: Any", Meteor, 6, 0x64FA7800)
-				if network.network_is_host() then
-					network.network_session_kick_player(modder_player.player)
-				elseif player.is_player_host(modder_player.player) and player.is_player_modder(modder_player.player, -1) then
-					script_func.script_event_kick(modder_player.player)
-				else
-					network.force_remove_player(modder_player.player)
+		if listeners["» Auto Kick All Modders"] == nil then
+			listeners["» Auto Kick All Modders"] = event.add_event_listener("modder", function(modder_player)
+				if player.is_player_valid(modder_player.player) and modder_player.player ~= player.player_id() then
+					menu.notify("Kicked Modder\nPlayer: " .. tostring(player.get_player_name(modder_player.player)) .. "\nFlag: Any", Meteor, 6, 0x64FA7800)
+					if network.network_is_host() then
+						network.network_session_kick_player(modder_player.player)
+					elseif player.is_player_host(modder_player.player) and player.is_player_modder(modder_player.player, -1) then
+						script_func.script_event_kick(modder_player.player)
+					else
+						network.force_remove_player(modder_player.player)
+					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Auto Kick All Modders"] then
@@ -9100,18 +9293,20 @@ do
 			feature["» Auto Kick Modder " .. i] = menu.add_feature("" .. player.get_modder_flag_text(1 << i) .. "", "toggle", localparents["» Auto Kick Modders"].id, function(f)
 				settings["» Auto Kick Modder " .. i].Enabled = f.on
 				if f.on then
-					listeners["» Auto Kick Modder " .. i] = event.add_event_listener("modder", function(modder_player)
-						if modder_player.flag == 1 << i and player.is_player_valid(modder_player.player) and modder_player.player ~= player.player_id() then
-							menu.notify("Kicked Modder\nPlayer: " .. tostring(player.get_player_name(modder_player.player)) .. "\nFlag: " .. player.get_modder_flag_text(1 << i), Meteor, 6, 0x64FA7800)
-							if network.network_is_host() then
-								network.network_session_kick_player(modder_player.player)
-							elseif player.is_player_host(modder_player.player) and player.is_player_modder(modder_player.player, -1) then
-								script_func.script_event_kick(modder_player.player)
-							else
-								network.force_remove_player(modder_player.player)
+					if listeners["» Auto Kick Modder " .. i] == nil then
+						listeners["» Auto Kick Modder " .. i] = event.add_event_listener("modder", function(modder_player)
+							if modder_player.flag == 1 << i and player.is_player_valid(modder_player.player) and modder_player.player ~= player.player_id() then
+								menu.notify("Kicked Modder\nPlayer: " .. tostring(player.get_player_name(modder_player.player)) .. "\nFlag: " .. player.get_modder_flag_text(1 << i), Meteor, 6, 0x64FA7800)
+								if network.network_is_host() then
+									network.network_session_kick_player(modder_player.player)
+								elseif player.is_player_host(modder_player.player) and player.is_player_modder(modder_player.player, -1) then
+									script_func.script_event_kick(modder_player.player)
+								else
+									network.force_remove_player(modder_player.player)
+								end
 							end
-						end
-					end)
+						end)
+					end
 				end
 				if not f.on then
 					if listeners["» Auto Kick Modder " .. i] then
@@ -9479,7 +9674,69 @@ feature["» Out Of Control"] = menu.add_feature("» Out Of Control", "action_val
 	end
 end)
 feature["» Out Of Control"]:set_str_data({"Normal", "Explode On Impact"})
-feature["» Out Of Control"].value = 0
+
+menu.add_feature("» Frodo In Da Hood", "toggle", localparents["» Session Trolling"].id, function(f)
+	settings["» Frodo In Da Hood"].Enabled = f.on
+	local all_clowns = {}
+	if f.on then
+		utilities.request_model(gameplay.get_hash_key("S_M_Y_Clown_01"))
+		while f.on do
+			for i = 1, 50 do
+				if all_clowns[i] then
+					if entity.is_an_entity(all_clowns[i]) and entity.is_entity_dead(all_clowns[i]) then
+						network.request_control_of_entity(all_clowns[i])
+						entity.delete_entity(all_clowns[i])
+						network.request_control_of_entity(all_clowns[i])
+						entity.delete_entity(all_clowns[i])
+						all_clowns[i] = nil
+					else
+						ped.set_ped_combat_ability(all_clowns[i], 2)
+						ped.set_ped_combat_attributes(all_clowns[i], 5, true)
+						ped.set_ped_relationship_group_hash(all_clowns[i], gameplay.get_hash_key("WILD_ANIMAL"))
+					end
+				end
+				if all_clowns[i] == nil then
+					local pos = player.get_player_coords(player.player_id())
+					all_clowns[i] = ped.create_ped(0, gameplay.get_hash_key("S_M_Y_Clown_01"), v3(pos.x + math.random(-200, 200), pos.y + math.random(-200, 200), select(2, gameplay.get_ground_z(pos + v3(0, 0, 10))) + 1), math.random(0, 360), true, false)
+					network.request_control_of_entity(all_clowns[i])
+					local weapon_hash
+					local real = math.random(1, 5)
+					if real == 1 then
+						weapon_hash = 0x99B507EA
+					elseif real == 2 then
+						weapon_hash = 0xDD5DF8D9
+					elseif real == 3 then
+						weapon_hash = 0xCD274149
+					elseif real == 4 then
+						weapon_hash = 0x3813FC08
+					else
+						weapon_hash = 0xF9DCBF2D
+					end
+					weapon.give_delayed_weapon_to_ped(all_clowns[i], weapon_hash, 0, true)
+					ped.set_ped_combat_ability(all_clowns[i], 2)
+					ped.set_ped_combat_attributes(all_clowns[i], 5, true)
+					ai.task_combat_ped(all_clowns[i], player.get_player_ped(player.player_id()), 0, 16)
+					ped.set_ped_relationship_group_hash(all_clowns[i], gameplay.get_hash_key("WILD_ANIMAL"))
+				end
+				system.wait(100)
+			end
+		end
+		system.yield(2000)
+	end
+	if not f.on then
+		for i = 1, 50 do
+			if all_clowns[i] then
+				network.request_control_of_entity(all_clowns[i])
+				entity.delete_entity(all_clowns[i])
+				network.request_control_of_entity(all_clowns[i])
+				entity.delete_entity(all_clowns[i])
+				all_clowns[i] = nil
+			end
+		end
+		all_clowns = {}
+	end
+	settings["» Frodo In Da Hood"].Enabled = f.on
+end)
 
 menu.add_feature("» Clumsy Peds", "toggle", localparents["» Session Trolling"].id, function(f)
 	settings["» Clumsy Peds"].Enabled = f.on
@@ -9530,28 +9787,6 @@ menu.add_feature("» Explode All Petrol Tanks", "action", localparents["» Sessi
 		end
 	end
 end)
-
-menu.add_feature("» Waves Intensity", "action_value_str", localparents["» Session Trolling"].id, function(f)
-	if f.value == 0 then
-		local input_stat, input_val = input.get("Set Waves Intensity (0 - 1000)", "", 4, 3)
-		if input_stat == 1 then
-			return HANDLER_CONTINUE
-		end
-		if input_stat == 2 then
-			return HANDLER_POP
-		end
-		if tonumber(input_val) < 0 or tonumber(input_val) > 1000 then
-        	menu.notify("Invalid Input!", Meteor, 3, 211)
-        else
-			water.set_waves_intensity(input_val)
-		end
-	elseif f.value == 1 then
-		water.reset_waves_intensity()
-	end
-end):set_str_data({
-	"Set",
-	"Reset"
-})
 
 menu.add_feature("» Earrape Everyone", "action", localparents["» Session Trolling"].id, function(f)
 	for i = 0, 100 do
@@ -9866,11 +10101,12 @@ feature["» City Riot"] = menu.add_feature("» City Riot", "toggle", localparent
 	if f.on then
 		while f.on do
 			system.yield(2000)
-			if not player_func.is_player_in_interior(player.player_id()) then
+			if interior.get_interior_from_entity(player.get_player_ped(player.player_id())) == 0 then
 				local peds = ped.get_all_peds()
 				for i = 1, #peds do
 					if not ped.is_ped_a_player(peds[i]) and not entity.is_entity_dead(peds[i]) then
 						network.request_control_of_entity(peds[i])
+						weapon.give_delayed_weapon_to_ped(peds[i], 0x1B06D571, 0, true)
 						ped.set_ped_combat_ability(peds[i], 2)
 						ped.set_ped_combat_attributes(peds[i], 5, true)
 						ped.set_can_attack_friendly(peds[i], true, true)
@@ -10119,6 +10355,12 @@ feature["» Spawn Custom Entity"] = menu.add_feature("» Spawn Custom Entity", "
         return HANDLER_POP
     end
 
+	if math.type(input_val) == "integer" then
+		input_val = input_val
+	else
+		input_val = gameplay.get_hash_key(input_val)
+	end
+
 	if streaming.is_model_valid(gameplay.get_hash_key(tostring(input_val))) then
 		if f.value == 0 then
 			utilities.request_model(gameplay.get_hash_key(tostring(input_val)))
@@ -10204,22 +10446,12 @@ menu.add_feature("» Hard Remove Nearby Entities", "action", localparents["» Ga
 	end
 end)
 
-feature["» Enable Spectator Chat"] = menu.add_feature("» Enable Spectator Chat", "toggle", localparents["» Gameplay Utilities"].id, function(f)
-	settings["» Enable Spectator Chat"].Enabled = f.on
-	if f.on then
-		while f.on do
-			if network.is_session_started() then
-				natives.NETWORK_SET_NO_SPECTATOR_CHAT(false)
-			end
-			system.yield(10000)
+menu.add_feature("» Stop Spectating Any Player", "action", localparents["» Gameplay Utilities"].id, function(f)
+	for pid = 0, 31 do
+		if player.is_player_valid(pid) then
+			menu.get_feature_by_hierarchy_key("online.online_players.player_" .. pid .. ".spectate_player").on = false
 		end
 	end
-	if not f.on then
-		if network.is_session_started() then
-			natives.NETWORK_SET_NO_SPECTATOR_CHAT(true)
-		end
-	end
-	settings["» Enable Spectator Chat"].Enabled = f.on
 end)
 
 feature["» Instant Respawn"] = menu.add_feature("» Instant Respawn", "toggle", localparents["» Gameplay Utilities"].id, function(f)
@@ -10467,6 +10699,9 @@ menu.add_feature("» Toggle Freecam", "toggle", localparents["» Freecam"].id, f
 			natives.CLEAR_PED_TASKS(player.get_player_ped(player.player_id()))
 			natives.CLEAR_PED_SECONDARY_TASK(player.get_player_ped(player.player_id()))
 			natives.REQUEST_ADDITIONAL_COLLISION_AT_COORD(player.get_player_coords(player.player_id()).x, player.get_player_coords(player.player_id()).y, player.get_player_coords(player.player_id()).z)
+			if not player.is_player_in_any_vehicle(player.player_id()) then
+				natives.FREEZE_ENTITY_POSITION(player.get_player_ped(player.player_id()), true)
+			end
 			natives.SET_CAM_ROT(freecam_player_cam, cam.get_gameplay_cam_rot().x, cam.get_gameplay_cam_rot().y, cam.get_gameplay_cam_rot().z, 2)
 			if settings["» Freecam Hide HUD"].Enabled then
 				ui.hide_hud_and_radar_this_frame()
@@ -10510,6 +10745,7 @@ menu.add_feature("» Toggle Freecam", "toggle", localparents["» Freecam"].id, f
 			freecam_player_cam = nil
 		end
 		natives.UNLOCK_MINIMAP_POSITION()
+		natives.FREEZE_ENTITY_POSITION(player.get_player_ped(player.player_id()), false)
 	end
 end)
 
@@ -10645,7 +10881,7 @@ feature["» Quick Entity Actions"] = menu.add_feature("» Quick Entity Actions",
 					ui.set_text_centre(0)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("X - Delete | B - Copy Hash | K - Explode | N - Engine | U - No Control | H - Enter | C - Freeze", v2(0.5, 0.95))
+					ui.draw_text("X - Delete | B - Copy Hash | K - Explode | N - Engine | U - Burn | H - Enter | C - Freeze", v2(0.5, 0.95))
 					if controls.is_disabled_control_just_pressed(2, 323) then
 						utilities.request_control_silent(controls_entity_aimed_at)
 						utilities.hard_remove_entity(controls_entity_aimed_at)
@@ -10659,7 +10895,35 @@ feature["» Quick Entity Actions"] = menu.add_feature("» Quick Entity Actions",
 						vehicle.set_vehicle_engine_health(controls_entity_aimed_at, -1)
 					elseif controls.is_disabled_control_just_pressed(2, 303) then
 						utilities.request_control_silent(controls_entity_aimed_at)
-						vehicle.set_vehicle_out_of_control(controls_entity_aimed_at, true, true)
+						vehicle.set_vehicle_engine_health(controls_entity_aimed_at, -1.0)
+						natives.SET_VEHICLE_PETROL_TANK_HEALTH(controls_entity_aimed_at, -1.0)
+						for i = 1, 12 do
+							fire.add_explosion(entity.get_entity_coords(controls_entity_aimed_at) + v3(0, 0, 1), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("engine")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("overheat")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("overheat_2")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("petrolcap")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("petroltank")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("engine_l")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("engine_r")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("engineblock")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_f")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_r")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("frame_1")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("brakelight_l")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("brakelight_r")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("overheat")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_lf")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_rf")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_lm1")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_rm1")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_lm2")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_rm2")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_lm3")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_rm3")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_lr")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_rr")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+						end
 					elseif controls.is_disabled_control_just_pressed(2, 304) then
 						if ped.is_ped_a_player(vehicle.get_ped_in_vehicle_seat(controls_entity_aimed_at, -1)) then
 							ped.set_ped_into_vehicle(player.get_player_ped(player.player_id()), controls_entity_aimed_at, -2)
@@ -10687,7 +10951,7 @@ feature["» Quick Entity Actions"] = menu.add_feature("» Quick Entity Actions",
 					ui.set_text_centre(0)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("X - Delete | B - Copy Hash | K - Explode | N - Engine | U - No Control | H - Enter | C - Freeze", v2(0.5, 0.95))
+					ui.draw_text("X - Delete | B - Copy Hash | K - Explode | N - Engine | U - Burn | H - Enter | C - Freeze", v2(0.5, 0.95))
 					if controls.is_disabled_control_just_pressed(2, 323) then
 						utilities.request_control_silent(controls_entity_aimed_at)
 						utilities.hard_remove_entity(controls_entity_aimed_at)
@@ -10701,7 +10965,35 @@ feature["» Quick Entity Actions"] = menu.add_feature("» Quick Entity Actions",
 						vehicle.set_vehicle_engine_health(controls_entity_aimed_at, -1)
 					elseif controls.is_disabled_control_just_pressed(2, 303) then
 						utilities.request_control_silent(controls_entity_aimed_at)
-						vehicle.set_vehicle_out_of_control(controls_entity_aimed_at, true, true)
+						vehicle.set_vehicle_engine_health(controls_entity_aimed_at, -1.0)
+						natives.SET_VEHICLE_PETROL_TANK_HEALTH(controls_entity_aimed_at, -1.0)
+						for i = 1, 12 do
+							fire.add_explosion(entity.get_entity_coords(controls_entity_aimed_at) + v3(0, 0, 1), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("engine")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("overheat")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("overheat_2")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("petrolcap")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("petroltank")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("engine_l")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("engine_r")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("engineblock")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_f")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_r")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("frame_1")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("brakelight_l")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("brakelight_r")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("overheat")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_lf")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_rf")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_lm1")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_rm1")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_lm2")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_rm2")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_lm3")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_rm3")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_lr")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+							fire.add_explosion(natives.GET_WORLD_POSITION_OF_ENTITY_BONE(controls_entity_aimed_at, gameplay.get_hash_key("wheel_rr")):__tov3() + v3(math.random(-40, 40) / 10, math.random(-40, 40) / 10, math.random(-40, 40) / 10), 3, true, false, 0, 0)
+						end
 					elseif controls.is_disabled_control_just_pressed(2, 304) then
 						utilities.request_control_silent(controls_entity_aimed_at)
 						if ped.is_ped_a_player(vehicle.get_ped_in_vehicle_seat(controls_entity_aimed_at, -1)) then
@@ -10762,7 +11054,7 @@ feature["» Entity Debug Info"] = menu.add_feature("» Entity Debug Info", "togg
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("Hash: " .. entity.get_entity_model_hash(entity_debug_info_entity) .. "", v2(0.5, 0.53))
+					ui.draw_text("Hash: " .. tostring(entity.get_entity_model_hash(entity_debug_info_entity)) .. "", v2(0.5, 0.53))
 					ui.set_text_scale(0.35)
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
@@ -10807,7 +11099,7 @@ feature["» Entity Debug Info"] = menu.add_feature("» Entity Debug Info", "togg
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("Frozen: " .. tostring(memory.get_net_id_bitset(memory.get_entity_net_id_no_migration(entity_debug_info_entity), 17) == 1) .. "", v2(0.5, 0.71))
+					ui.draw_text("Frozen: " .. tostring(memory.read_bitset(memory.network_entity_to_net(entity_debug_info_entity), 17) == 1) .. "", v2(0.5, 0.71))
 					ui.set_text_scale(0.35)
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
@@ -10999,7 +11291,7 @@ feature["» Entity Debug Info"] = menu.add_feature("» Entity Debug Info", "togg
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("Hash: " .. entity.get_entity_model_hash(entity_debug_info_entity) .. "", v2(0.5, 0.53))
+					ui.draw_text("Hash: " .. tostring(entity.get_entity_model_hash(entity_debug_info_entity)) .. "", v2(0.5, 0.53))
 					ui.set_text_scale(0.35)
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
@@ -11009,7 +11301,7 @@ feature["» Entity Debug Info"] = menu.add_feature("» Entity Debug Info", "togg
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("Name: " .. vehicle.get_vehicle_model(entity_debug_info_entity) .. "", v2(0.5, 0.57))
+					ui.draw_text("Name: " .. tostring(vehicle.get_vehicle_model(entity_debug_info_entity)) .. "", v2(0.5, 0.57))
 					ui.set_text_scale(0.35)
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
@@ -11044,7 +11336,7 @@ feature["» Entity Debug Info"] = menu.add_feature("» Entity Debug Info", "togg
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("Frozen: " .. tostring(memory.get_net_id_bitset(memory.get_entity_net_id_no_migration(entity_debug_info_entity), 17) == 1) .. "", v2(0.5, 0.71))
+					ui.draw_text("Frozen: " .. tostring(memory.read_bitset(memory.network_entity_to_net(entity_debug_info_entity), 17) == 1) .. "", v2(0.5, 0.71))
 					ui.set_text_scale(0.35)
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
@@ -11118,7 +11410,7 @@ feature["» Entity Debug Info"] = menu.add_feature("» Entity Debug Info", "togg
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("Hash: " .. entity.get_entity_model_hash(entity_debug_info_entity) .. "", v2(0.5, 0.53))
+					ui.draw_text("Hash: " .. tostring(entity.get_entity_model_hash(entity_debug_info_entity)) .. "", v2(0.5, 0.53))
 					ui.set_text_scale(0.35)
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
@@ -11128,7 +11420,7 @@ feature["» Entity Debug Info"] = menu.add_feature("» Entity Debug Info", "togg
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("Name: " .. vehicle.get_vehicle_model(entity_debug_info_entity) .. "", v2(0.5, 0.57))
+					ui.draw_text("Name: " .. tostring(vehicle.get_vehicle_model(entity_debug_info_entity)) .. "", v2(0.5, 0.57))
 					ui.set_text_scale(0.35)
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
@@ -11163,7 +11455,7 @@ feature["» Entity Debug Info"] = menu.add_feature("» Entity Debug Info", "togg
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("Frozen: " .. tostring(memory.get_net_id_bitset(memory.get_entity_net_id_no_migration(entity_debug_info_entity), 17) == 1) .. "", v2(0.5, 0.71))
+					ui.draw_text("Frozen: " .. tostring(memory.read_bitset(memory.network_entity_to_net(entity_debug_info_entity), 17) == 1) .. "", v2(0.5, 0.71))
 					ui.set_text_scale(0.35)
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
@@ -11237,7 +11529,7 @@ feature["» Entity Debug Info"] = menu.add_feature("» Entity Debug Info", "togg
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("Hash: " .. entity.get_entity_model_hash(entity_debug_info_entity) .. "", v2(0.5, 0.53))
+					ui.draw_text("Hash: " .. tostring(entity.get_entity_model_hash(entity_debug_info_entity)) .. "", v2(0.5, 0.53))
 					ui.set_text_scale(0.35)
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
@@ -11277,7 +11569,7 @@ feature["» Entity Debug Info"] = menu.add_feature("» Entity Debug Info", "togg
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
 					ui.set_text_color(255, 255, 255, 255)
-					ui.draw_text("Frozen: " .. tostring(memory.get_net_id_bitset(memory.get_entity_net_id_no_migration(entity_debug_info_entity), 17) == 1) .. "", v2(0.5, 0.69))
+					ui.draw_text("Frozen: " .. tostring(memory.read_bitset(memory.network_entity_to_net(entity_debug_info_entity), 17) == 1) .. "", v2(0.5, 0.69))
 					ui.set_text_scale(0.35)
 					ui.set_text_font(4)
 					ui.set_text_outline(true)
@@ -11735,7 +12027,60 @@ menu.add_feature("» Clear Cloud Hat", "action", localparents["» Weather And Ti
 	gameplay.clear_cloud_hat()
 end)
 
-menu.add_feature("» Spawn Random Lightning", "action", localparents["» Weather And Time"].id, function(f)
+menu.add_feature("» Waves Intensity", "action_value_str", localparents["» Weather And Time"].id, function(f)
+	if f.value == 0 then
+		local input_stat, input_val = input.get("Set Waves Intensity (0 - 1000)", "", 4, 3)
+		if input_stat == 1 then
+			return HANDLER_CONTINUE
+		end
+		if input_stat == 2 then
+			return HANDLER_POP
+		end
+		if tonumber(input_val) < 0 or tonumber(input_val) > 1000 then
+        	menu.notify("Invalid Input!", Meteor, 3, 211)
+        else
+			water.set_waves_intensity(input_val)
+		end
+	elseif f.value == 1 then
+		water.reset_waves_intensity()
+	end
+end):set_str_data({
+	"Set",
+	"Reset"
+})
+
+feature["» Set Wind Speed"] = menu.add_feature("» Set Wind Speed", "action_value_f", localparents["» Weather And Time"].id, function(f)
+	settings["» Set Wind Speed"].Value = f.value
+	natives.SET_WIND(f.value)
+end)
+feature["» Set Wind Speed"].max = 1.0
+feature["» Set Wind Speed"].min = 0.0
+feature["» Set Wind Speed"].mod = 0.1
+feature["» Set Wind Speed"].value = 0.0
+
+feature["» Set Rain Level"] = menu.add_feature("» Set Rain Level", "action_value_f", localparents["» Weather And Time"].id, function(f)
+	settings["» Set Rain Level"].Value = f.value
+	natives.SET_RAIN_LEVEL(f.value)
+end)
+feature["» Set Rain Level"].max = 1.0
+feature["» Set Rain Level"].min = 0.0
+feature["» Set Rain Level"].mod = 0.1
+feature["» Set Rain Level"].value = 0.0
+
+menu.add_feature("» Reset Rain Level", "action", localparents["» Weather And Time"].id, function(f)
+	natives.SET_RAIN_LEVEL(-1.0)
+end)
+
+feature["» Set Snow Level"] = menu.add_feature("» Set Snow Level", "action_value_f", localparents["» Weather And Time"].id, function(f)
+	settings["» Set Snow Level"].Value = f.value
+	natives.SET_SNOW_LEVEL(f.value)
+end)
+feature["» Set Snow Level"].max = 1.0
+feature["» Set Snow Level"].min = 0.0
+feature["» Set Snow Level"].mod = 0.1
+feature["» Set Snow Level"].value = 0.0
+
+menu.add_feature("» Create Lightning Flash", "action", localparents["» Weather And Time"].id, function(f)
 	natives.FORCE_LIGHTNING_FLASH()
 end)
 
@@ -11771,11 +12116,13 @@ end)
 feature["» Log Session Chat"] = menu.add_feature("» Log Session Chat", "toggle", localparents["» Chat Options"].id, function(f)
     settings["» Log Session Chat"].Enabled = f.on
 	if f.on then
-		listeners["» Log Session Chat"] = event.add_event_listener("chat", function(chat_message)
-			if player.is_player_valid(chat_message.player) then
-				text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\Logs\\Chat\\", "") .. "\\Chat.log", "a"), "" .. os.date() .. " | " .. utilities.dec_to_ipv4(player.get_player_ip(chat_message.player)) .. " | " .. player.get_player_scid(chat_message.player) .. " | " .. player_func.get_player_flag_string(chat_message.player) .. " " .. player.get_player_name(chat_message.player) .. " >> " .. chat_message.body .. "\n")
-			end
-		end)
+		if listeners["» Log Session Chat"] == nil then
+			listeners["» Log Session Chat"] = event.add_event_listener("chat", function(chat_message)
+				if player.is_player_valid(chat_message.player) then
+					text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\Logs\\Chat\\", "") .. "\\Chat.log", "a"), "" .. os.date() .. " | " .. utilities.dec_to_ipv4(player.get_player_ip(chat_message.player)) .. " | " .. player.get_player_scid(chat_message.player) .. " | " .. player_func.get_player_flag_string(chat_message.player) .. " " .. player.get_player_name(chat_message.player) .. " >> " .. chat_message.body .. "\n")
+				end
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Log Session Chat"] then
@@ -11789,16 +12136,20 @@ end)
 feature["» Log Session Change"] = menu.add_feature("» Log Session Change", "toggle", localparents["» Chat Options"].id, function(f)
 	settings["» Log Session Change"].Enabled = f.on
 	if f.on then
-		listeners["» Log Session Change Leave"] = event.add_event_listener("player_leave", function(left_player)
-			if left_player.player == player.player_id() and player.is_player_valid(left_player.player) then
-				text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\Logs\\Chat\\", "") .. "\\Chat.log", "a"), "# # # # # | You Left The Session | " .. os.date() .. " | # # # # #\n")
-			end
-		end)
-		listeners["» Log Session Change Join"] = event.add_event_listener("player_join", function(joined_player)
-			if joined_player.player == player.player_id() and player.is_player_valid(joined_player.player) then
-				text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\Logs\\Chat\\", "") .. "\\Chat.log", "a"), "# # # # # | You Joined A New Session | " .. os.date() .. " | # # # # #\n")
-			end
-		end)
+		if listeners["» Log Session Change Leave"] == nil then
+			listeners["» Log Session Change Leave"] = event.add_event_listener("player_leave", function(left_player)
+				if left_player.player == player.player_id() and player.is_player_valid(left_player.player) then
+					text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\Logs\\Chat\\", "") .. "\\Chat.log", "a"), "# # # # # | You Left The Session | " .. os.date() .. " | # # # # #\n")
+				end
+			end)
+		end
+		if listeners["» Log Session Change Join"] == nil then
+			listeners["» Log Session Change Join"] = event.add_event_listener("player_join", function(joined_player)
+				if joined_player.player == player.player_id() and player.is_player_valid(joined_player.player) then
+					text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\Logs\\Chat\\", "") .. "\\Chat.log", "a"), "# # # # # | You Joined A New Session | " .. os.date() .. " | # # # # #\n")
+				end
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Log Session Change Leave"] then
@@ -11816,16 +12167,21 @@ end)
 feature["» Translate Chat Messages"] = menu.add_feature("» Translate Chat Messages", "toggle", localparents["» Chat Options"].id, function(f)
     settings["» Translate Chat Messages"].Enabled = f.on
 	if f.on then
-		listeners["» Translate Chat Messages"] = event.add_event_listener("chat", function(chat_message)
-			if chat_message.player ~= player.player_id() and player.is_player_valid(chat_message.player) then
-				if chat_message.body ~= nil and not string.find(chat_message.body, "*") then
-					local success, webdata = web.get("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=" .. web.urlencode(chat_message.body))
-					if not string.find(webdata, "\"en\"") and string.match(webdata, ".-\"(.-)\",\"") ~= chat_message.body then
-						menu.notify("Player: " .. tostring(player.get_player_name(chat_message.player)) .. "\nTranslated: " .. string.match(webdata, ".-\"(.-)\",\"") .. "", Meteor, 12, 0x64FA7800)
+		if listeners["» Translate Chat Messages"] == nil then
+			listeners["» Translate Chat Messages"] = event.add_event_listener("chat", function(chat_message)
+				if chat_message.player ~= player.player_id() and player.is_player_valid(chat_message.player) then
+					if chat_message.body ~= nil and not string.find(chat_message.body, "*") then
+						local success, webdata = web.get("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=" .. web.urlencode(chat_message.body))
+						local real = string.match(webdata, ".-\"(.-)\",\"")
+						if not string.find(webdata, "\"en\"") and real ~= chat_message.body then
+							if real ~= nil and chat_message.player ~= nil and player.get_player_name(chat_message.player) ~= nil then
+								menu.notify("Player: " .. tostring(player.get_player_name(chat_message.player)) .. "\nTranslated: " .. tostring(real) .. "", Meteor, 12, 0x64FA7800)
+							end
+						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Translate Chat Messages"] then
@@ -11836,12 +12192,49 @@ feature["» Translate Chat Messages"] = menu.add_feature("» Translate Chat Mess
 	settings["» Translate Chat Messages"].Enabled = f.on
 end)
 
+menu.add_feature("» Announce Richest Player", "action", localparents["» Chat Options"].id, function(f)
+	if network.is_session_started() then
+		local player_table = {}
+		for pid = 0, 31 do
+			if player.is_player_valid(pid) then
+				table.insert(player_table, pid)
+			end
+		end
+		table.sort(player_table, function(a, b)
+			return (script_func.get_player_money(a) > script_func.get_player_money(b))
+		end)
+		if player_table[1] ~= nil then
+			menu.notify()
+			network.send_chat_message(player.get_player_name(player_table[1]) .. " is the richest player in the session with " .. script_func.get_player_money_str(player_table[1]) .. "!", false)
+		end
+	end
+end)
+
+menu.add_feature("» Announce Poorest Player", "action", localparents["» Chat Options"].id, function(f)
+	if network.is_session_started() then
+		local player_table = {}
+		for pid = 0, 31 do
+			if player.is_player_valid(pid) then
+				table.insert(player_table, pid)
+			end
+		end
+		table.sort(player_table, function(a, b)
+			return (script_func.get_player_money(a) < script_func.get_player_money(b))
+		end)
+		if player_table[1] ~= nil then
+			network.send_chat_message(player.get_player_name(player_table[1]) .. " is the poorest player in the session with " .. script_func.get_player_money_str(player_table[1]), false)
+		end
+	end
+end)
+
 feature["» Notify Sent Messages"] = menu.add_feature("» Notify Sent Messages", "toggle", localparents["» Chat Options"].id, function(f)
 	settings["» Notify Sent Messages"].Enabled = f.on
 	if f.on then
-		listeners["» Notify Sent Messages"] = event.add_event_listener("chat", function(chat_message)
-			menu.notify("Player: " .. tostring(player.get_player_name(chat_message.player)) .. "\nMessage: " .. chat_message.body .. "", Meteor, 2, 0x64FA7800)
-		end)
+		if listeners["» Notify Sent Messages"] == nil then
+			listeners["» Notify Sent Messages"] = event.add_event_listener("chat", function(chat_message)
+				menu.notify("Player: " .. tostring(player.get_player_name(chat_message.player)) .. "\nMessage: " .. chat_message.body .. "", Meteor, 2, 0x64FA7800)
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Notify Sent Messages"] then
@@ -11855,13 +12248,15 @@ end)
 feature["» Uwu-Ify Chat Messages"] = menu.add_feature("» Uwu-Ify Chat Messages", "toggle", localparents["» Chat Options"].id, function(f)
 	settings["» Uwu-Ify Chat Messages"].Enabled = f.on
 	if f.on then
-		listeners["» Uwu-Ify Chat Messages"] = event.add_event_listener("chat", function(chat_message)
-			if did_someone_type and chat_message.player ~= player.player_id() then
-				local string1_ = text_func.string_replace(chat_message.body, "r", "w")
-				local string2_ = text_func.string_replace(string1_, "u", "uwu")
-				network.send_chat_message(string2_, false)
-			end
-		end)
+		if listeners["» Uwu-Ify Chat Messages"] == nil then
+			listeners["» Uwu-Ify Chat Messages"] = event.add_event_listener("chat", function(chat_message)
+				if did_someone_type and chat_message.player ~= player.player_id() then
+					local string1_ = text_func.string_replace(chat_message.body, "r", "w")
+					local string2_ = text_func.string_replace(string1_, "u", "uwu")
+					network.send_chat_message(string2_, false)
+				end
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Uwu-Ify Chat Messages"] then
@@ -11904,27 +12299,29 @@ end)
 feature["» Chat Command veh <model> <max> <god>"] = menu.add_feature("» veh <model> <max> <god>", "toggle", localparents["» Chat Commands"].id, function(f)
 	settings["» Chat Command veh <model> <max> <god>"].Enabled = f.on
 	if f.on then
-		listeners["» Chat Command veh <model> <max> <god>"] = event.add_event_listener("chat", function(chat_message)
-			if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "veh ") then
-				if string.find(chat_message.body, ChatCommandPrefix .. "veh ") then
-					local vehicle_model = text_func.split_string(chat_message.body, ChatCommandPrefix .. "veh ")
-					local vehicle_model_final = text_func.split_string(vehicle_model[2], " ")
-					if streaming.is_model_valid(gameplay.get_hash_key(vehicle_model_final[1])) and gameplay.get_hash_key(vehicle_model_final[1]) ~= 956849991 and gameplay.get_hash_key(vehicle_model_final[1]) ~= 1133471123 and gameplay.get_hash_key(vehicle_model_final[1]) ~= 2803699023 and gameplay.get_hash_key(vehicle_model_final[1]) ~= 386089410 and gameplay.get_hash_key(vehicle_model_final[1]) ~= 1549009676 then
-						utilities.request_model(gameplay.get_hash_key(vehicle_model_final[1]))
-						local vehicle_ = vehicle.create_vehicle(gameplay.get_hash_key(vehicle_model_final[1]), utilities.offset_coords_forward(player.get_player_coords(chat_message.player), player.get_player_heading(chat_message.player), 8), player.get_player_heading(chat_message.player), true, false)
-						network.request_control_of_entity(vehicle_)
-						if string.find(vehicle_model[2]:lower(), " max") then
+		if listeners["» Chat Command veh <model> <max> <god>"] == nil then
+			listeners["» Chat Command veh <model> <max> <god>"] = event.add_event_listener("chat", function(chat_message)
+				if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "veh ") then
+					if string.find(chat_message.body, ChatCommandPrefix .. "veh ") then
+						local vehicle_model = text_func.split_string(chat_message.body, ChatCommandPrefix .. "veh ")
+						local vehicle_model_final = text_func.split_string(vehicle_model[2], " ")
+						if streaming.is_model_valid(gameplay.get_hash_key(vehicle_model_final[1])) and gameplay.get_hash_key(vehicle_model_final[1]) ~= 956849991 and gameplay.get_hash_key(vehicle_model_final[1]) ~= 1133471123 and gameplay.get_hash_key(vehicle_model_final[1]) ~= 2803699023 and gameplay.get_hash_key(vehicle_model_final[1]) ~= 386089410 and gameplay.get_hash_key(vehicle_model_final[1]) ~= 1549009676 then
+							utilities.request_model(gameplay.get_hash_key(vehicle_model_final[1]))
+							local vehicle_ = vehicle.create_vehicle(gameplay.get_hash_key(vehicle_model_final[1]), utilities.offset_coords_forward(player.get_player_coords(chat_message.player), player.get_player_heading(chat_message.player), 8), player.get_player_heading(chat_message.player), true, false)
 							network.request_control_of_entity(vehicle_)
-							utilities.max_vehicle(vehicle_)
-						end
-						if string.find(vehicle_model[2]:lower(), " god") then
-							network.request_control_of_entity(vehicle_)
-							entity.set_entity_god_mode(vehicle_, true)
+							if string.find(vehicle_model[2]:lower(), " max") then
+								network.request_control_of_entity(vehicle_)
+								utilities.max_vehicle(vehicle_)
+							end
+							if string.find(vehicle_model[2]:lower(), " god") then
+								network.request_control_of_entity(vehicle_)
+								entity.set_entity_god_mode(vehicle_, true)
+							end
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Chat Command veh <model> <max> <god>"] then
@@ -11938,23 +12335,25 @@ end)
 feature["» Chat Command crash <name>"] = menu.add_feature("» crash <name>", "toggle", localparents["» Chat Commands"].id, function(f)
 	settings["» Chat Command crash <name>"].Enabled = f.on
 	if f.on then
-		listeners["» Chat Command crash <name>"] = event.add_event_listener("chat", function(chat_message)
-			if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "crash ") then
-				if string.find(chat_message.body, ChatCommandPrefix .. "crash ") then
-					local player_name_or_id = text_func.split_string(chat_message.body, ChatCommandPrefix .. "crash ")
-					if player_name_or_id[2] ~= "" then
-						local player_id = player_func.get_id_from_name(player_name_or_id[2])
-						if player_id ~= nil then
-							if player.is_player_valid(tonumber(player_id)) then
-								if (tonumber(player_id) == player.player_id() and chat_message.player == player.player_id()) or (tonumber(player_id) ~= player.player_id()) then
-									script_func.script_event_crash(tonumber(player_id))
+		if listeners["» Chat Command crash <name>"] == nil then
+			listeners["» Chat Command crash <name>"] = event.add_event_listener("chat", function(chat_message)
+				if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "crash ") then
+					if string.find(chat_message.body, ChatCommandPrefix .. "crash ") then
+						local player_name_or_id = text_func.split_string(chat_message.body, ChatCommandPrefix .. "crash ")
+						if player_name_or_id[2] ~= "" then
+							local player_id = player_func.get_id_from_name(player_name_or_id[2])
+							if player_id ~= nil then
+								if player.is_player_valid(tonumber(player_id)) then
+									if (tonumber(player_id) == player.player_id() and chat_message.player == player.player_id()) or (tonumber(player_id) ~= player.player_id()) then
+										script_func.script_event_crash(tonumber(player_id))
+									end
 								end
 							end
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Chat Command crash <name>"] then
@@ -11968,29 +12367,31 @@ end)
 feature["» Chat Command kick <name>"] = menu.add_feature("» kick <name>", "toggle", localparents["» Chat Commands"].id, function(f)
 	settings["» Chat Command kick <name>"].Enabled = f.on
 	if f.on then
-		listeners["» Chat Command kick <name>"] = event.add_event_listener("chat", function(chat_message)
-			if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "kick ") then
-				if string.find(chat_message.body, ChatCommandPrefix .. "kick ") then
-					local player_name_or_id = text_func.split_string(chat_message.body, ChatCommandPrefix .. "kick ")
-					if player_name_or_id[2] ~= "" then
-						local player_id = player_func.get_id_from_name(player_name_or_id[2])
-						if player_id ~= nil then
-							if player.is_player_valid(tonumber(player_id)) then
-								if (tonumber(player_id) == player.player_id() and chat_message.player == player.player_id()) or (tonumber(player_id) ~= player.player_id()) then
-									if network.network_is_host() then
-										network.network_session_kick_player(tonumber(player_id))
-									elseif player.is_player_host(tonumber(player_id)) and player.is_player_modder(tonumber(player_id), -1) then
-										script_func.script_event_kick(tonumber(player_id))
-									else
-										network.force_remove_player(tonumber(player_id))
+		if listeners["» Chat Command kick <name>"] == nil then
+			listeners["» Chat Command kick <name>"] = event.add_event_listener("chat", function(chat_message)
+				if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "kick ") then
+					if string.find(chat_message.body, ChatCommandPrefix .. "kick ") then
+						local player_name_or_id = text_func.split_string(chat_message.body, ChatCommandPrefix .. "kick ")
+						if player_name_or_id[2] ~= "" then
+							local player_id = player_func.get_id_from_name(player_name_or_id[2])
+							if player_id ~= nil then
+								if player.is_player_valid(tonumber(player_id)) then
+									if (tonumber(player_id) == player.player_id() and chat_message.player == player.player_id()) or (tonumber(player_id) ~= player.player_id()) then
+										if network.network_is_host() then
+											network.network_session_kick_player(tonumber(player_id))
+										elseif player.is_player_host(tonumber(player_id)) and player.is_player_modder(tonumber(player_id), -1) then
+											script_func.script_event_kick(tonumber(player_id))
+										else
+											network.force_remove_player(tonumber(player_id))
+										end
 									end
 								end
 							end
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Chat Command kick <name>"] then
@@ -12004,21 +12405,23 @@ end)
 feature["» Chat Command bounty <name> <amount>"] = menu.add_feature("» bounty <name> <amount>", "toggle", localparents["» Chat Commands"].id, function(f)
 	settings["» Chat Command bounty <name> <amount>"].Enabled = f.on
 	if f.on then
-		listeners["» Chat Command bounty <name> <amount>"] = event.add_event_listener("chat", function(chat_message)
-			if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "bounty ") then
-				if string.find(chat_message.body, ChatCommandPrefix .. "bounty ") then
-					local player_name_or_id = text_func.split_string(chat_message.body, ChatCommandPrefix .. "bounty ")
-					local player_name_or_id_final = text_func.split_string(player_name_or_id[2], ChatCommandPrefix .. " ")
-					if player_name_or_id_final[1] ~= "" then
-						local player_id = player_func.get_id_from_name(player_name_or_id_final[1])
-						if player_id ~= nil then
-							if player.is_player_valid(tonumber(player_id)) then
-								if (tonumber(player_id) == player.player_id() and chat_message.player == player.player_id()) or (tonumber(player_id) ~= player.player_id()) then
-									if math.type(tonumber(player_name_or_id_final[2])) == "integer" then
-										if tonumber(player_name_or_id_final[2]) > 0 and tonumber(player_name_or_id_final[2]) < 10001 then
-											for i = 0, 31 do
-												if player.is_player_valid(i) then
-													script.trigger_script_event(1294995624, i, {player.player_id(), tonumber(player_id), 1, tonumber(player_name_or_id_final[2]), 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, script_func.get_global_9(), script_func.get_global_10()})
+		if listeners["» Chat Command bounty <name> <amount>"] == nil then
+			listeners["» Chat Command bounty <name> <amount>"] = event.add_event_listener("chat", function(chat_message)
+				if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "bounty ") then
+					if string.find(chat_message.body, ChatCommandPrefix .. "bounty ") then
+						local player_name_or_id = text_func.split_string(chat_message.body, ChatCommandPrefix .. "bounty ")
+						local player_name_or_id_final = text_func.split_string(player_name_or_id[2], ChatCommandPrefix .. " ")
+						if player_name_or_id_final[1] ~= "" then
+							local player_id = player_func.get_id_from_name(player_name_or_id_final[1])
+							if player_id ~= nil then
+								if player.is_player_valid(tonumber(player_id)) then
+									if (tonumber(player_id) == player.player_id() and chat_message.player == player.player_id()) or (tonumber(player_id) ~= player.player_id()) then
+										if math.type(tonumber(player_name_or_id_final[2])) == "integer" then
+											if tonumber(player_name_or_id_final[2]) > 0 and tonumber(player_name_or_id_final[2]) < 10001 then
+												for i = 0, 31 do
+													if player.is_player_valid(i) then
+														script.trigger_script_event(1294995624, i, {player.player_id(), tonumber(player_id), 1, tonumber(player_name_or_id_final[2]), 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, script_func.get_global_9(), script_func.get_global_10()})
+													end
 												end
 											end
 										end
@@ -12028,8 +12431,8 @@ feature["» Chat Command bounty <name> <amount>"] = menu.add_feature("» bounty 
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Chat Command bounty <name> <amount>"] then
@@ -12043,23 +12446,25 @@ end)
 feature["» Chat Command perico <name>"] = menu.add_feature("» perico <name>", "toggle", localparents["» Chat Commands"].id, function(f)
 	settings["» Chat Command perico <name>"].Enabled = f.on
 	if f.on then
-		listeners["» Chat Command perico <name>"] = event.add_event_listener("chat", function(chat_message)
-			if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "perico ") then
-				if string.find(chat_message.body, ChatCommandPrefix .. "perico ") then
-					local player_name_or_id = text_func.split_string(chat_message.body, ChatCommandPrefix .. "perico ")
-					if player_name_or_id[2] ~= "" then
-						local player_id = player_func.get_id_from_name(player_name_or_id[2])
-						if player_id ~= nil then
-							if player.is_player_valid(tonumber(player_id)) then
-								if (tonumber(player_id) == player.player_id() and chat_message.player == player.player_id()) or (tonumber(player_id) ~= player.player_id()) then
-									script.trigger_script_event(-621279188, tonumber(player_id), {player.player_id(), 1})
+		if listeners["» Chat Command perico <name>"] == nil then
+			listeners["» Chat Command perico <name>"] = event.add_event_listener("chat", function(chat_message)
+				if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "perico ") then
+					if string.find(chat_message.body, ChatCommandPrefix .. "perico ") then
+						local player_name_or_id = text_func.split_string(chat_message.body, ChatCommandPrefix .. "perico ")
+						if player_name_or_id[2] ~= "" then
+							local player_id = player_func.get_id_from_name(player_name_or_id[2])
+							if player_id ~= nil then
+								if player.is_player_valid(tonumber(player_id)) then
+									if (tonumber(player_id) == player.player_id() and chat_message.player == player.player_id()) or (tonumber(player_id) ~= player.player_id()) then
+										script.trigger_script_event(-621279188, tonumber(player_id), {player.player_id(), 1})
+									end
 								end
 							end
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Chat Command perico <name>"] then
@@ -12073,23 +12478,25 @@ end)
 feature["» Chat Command otr <name>"] = menu.add_feature("» otr <name>", "toggle", localparents["» Chat Commands"].id, function(f)
 	settings["» Chat Command otr <name>"].Enabled = f.on
 	if f.on then
-		listeners["» Chat Command otr <name>"] = event.add_event_listener("chat", function(chat_message)
-			if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "otr ") then
-				if string.find(chat_message.body, ChatCommandPrefix .. "otr ") then
-					local player_name_or_id = text_func.split_string(chat_message.body, ChatCommandPrefix .. "otr ")
-					if player_name_or_id[2] ~= "" then
-						local player_id = player_func.get_id_from_name(player_name_or_id[2])
-						if player_id ~= nil then
-							if player.is_player_valid(tonumber(player_id)) then
-								if (tonumber(player_id) == player.player_id() and chat_message.player == player.player_id()) or (tonumber(player_id) ~= player.player_id()) then
-									script.trigger_script_event(-0x1757DB60, tonumber(player_id), {player.player_id(), utils.time() - 60, utils.time(), 1, 1, script_func.get_global_main(tonumber(player_id))})
+		if listeners["» Chat Command otr <name>"] == nil then
+			listeners["» Chat Command otr <name>"] = event.add_event_listener("chat", function(chat_message)
+				if text_func.string_starts_with(chat_message.body, ChatCommandPrefix .. "otr ") then
+					if string.find(chat_message.body, ChatCommandPrefix .. "otr ") then
+						local player_name_or_id = text_func.split_string(chat_message.body, ChatCommandPrefix .. "otr ")
+						if player_name_or_id[2] ~= "" then
+							local player_id = player_func.get_id_from_name(player_name_or_id[2])
+							if player_id ~= nil then
+								if player.is_player_valid(tonumber(player_id)) then
+									if (tonumber(player_id) == player.player_id() and chat_message.player == player.player_id()) or (tonumber(player_id) ~= player.player_id()) then
+										script.trigger_script_event(-0x1757DB60, tonumber(player_id), {player.player_id(), utils.time() - 60, utils.time(), 1, 1, script_func.get_global_main(tonumber(player_id))})
+									end
 								end
 							end
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if listeners["» Chat Command otr <name>"] then
@@ -12233,7 +12640,11 @@ feature["» Invalid Name Detection"] = menu.add_feature("» Invalid Name", "valu
 			if network.is_session_started() then
 				for pid = 0, 31 do
 					if player.is_player_valid(pid) then
-						if string.len(player.get_player_name(pid)) < 6 or string.len(player.get_player_name(pid)) > 16 or not string.find(player.get_player_name(pid), "^[%.%-%w_]+$") then
+						local Name1 = player_func.get_player_name(pid, 1)
+						local Name2 = player_func.get_player_name(pid, 2)
+						local Name3 = player_func.get_player_name(pid, 3)
+						local Name4 = player_func.get_player_name(pid, 4)
+						if string.len(player.get_player_name(pid)) < 6 or string.len(player.get_player_name(pid)) > 16 or not string.find(player.get_player_name(pid), "^[%.%-%w_]+$") or Name1 ~= Name2 or Name1 ~= Name3 or Name1 ~= Name4 or Name2 ~= Name3 or Name2 ~= Name4 or Name3 ~= Name4 then
 							if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(pid)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(pid)) then
 							else
 								if pid ~= player.player_id() and player.is_player_valid(pid) and not player.is_player_modder(pid, custommodderflags["Invalid Name"]) then
@@ -12302,23 +12713,25 @@ feature["» Bad Net Event Detection"] = menu.add_feature("» Bad Net Event", "va
 	settings["» Bad Net Event Detection"].Enabled = f.on
 	settings["» Bad Net Event Detection"].Value = f.value
 	if f.on then
-		eventhooks["» Bad Net Event Detection"] = hook.register_net_event_hook(function(source, target, eventId)
-			if eventId == NetEventID["GAME_CLOCK_EVENT"] or eventId == NetEventID["GAME_WEATHER_EVENT"] or eventId == NetEventID["GIVE_WEAPON_EVENT"] or eventId == NetEventID["REMOVE_WEAPON_EVENT"] or eventId == NetEventID["REMOVE_ALL_WEAPONS_EVENT"] or eventId == NetEventID["NETWORK_CLEAR_PED_TASKS_EVENT"] or eventId == NetEventID["NETWORK_START_PED_ARREST_EVENT"] or eventId == NetEventID["NETWORK_START_PED_UNCUFF_EVENT"] or eventId == NetEventID["SCRIPT_ENTITY_STATE_CHANGE_EVENT"] or eventId == NetEventID["GIVE_PICKUP_REWARDS_EVENT"] or eventId == NetEventID["NETWORK_CHECK_EXE_SIZE_EVENT"] or eventId == NetEventID["NETWORK_CHECK_CODE_CRCS_EVENT"] or eventId == NetEventID["PED_PLAY_PAIN_EVENT"] or eventId == NetEventID["REPORT_CASH_SPAWN_EVENT"] or eventId == NetEventID["NETWORK_CHECK_CATALOG_CRC"] then
-				if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(source)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(source)) then
-				else
-					if source ~= player.player_id() and player.is_player_valid(source) and not player.is_player_modder(source, custommodderflags["Bad Net Event"]) then
-						if f.value == 0 then
-							menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Bad Net Event", "Meteor Modder Detection", 12, 0x00A2FF)
-							player.set_player_as_modder(source, custommodderflags["Bad Net Event"])
-						elseif f.value == 1 then
-							menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Bad Net Event", "Meteor Modder Detection", 12, 0x00A2FF)
-						elseif f.value == 2 then
-							player.set_player_as_modder(source, custommodderflags["Bad Net Event"])
+		if eventhooks["» Bad Net Event Detection"] == nil then
+			eventhooks["» Bad Net Event Detection"] = hook.register_net_event_hook(function(source, target, eventId)
+				if eventId == NetEventID["GAME_CLOCK_EVENT"] or eventId == NetEventID["GAME_WEATHER_EVENT"] or eventId == NetEventID["GIVE_WEAPON_EVENT"] or eventId == NetEventID["REMOVE_WEAPON_EVENT"] or eventId == NetEventID["REMOVE_ALL_WEAPONS_EVENT"] or eventId == NetEventID["NETWORK_CLEAR_PED_TASKS_EVENT"] or eventId == NetEventID["NETWORK_START_PED_ARREST_EVENT"] or eventId == NetEventID["NETWORK_START_PED_UNCUFF_EVENT"] or eventId == NetEventID["SCRIPT_ENTITY_STATE_CHANGE_EVENT"] or eventId == NetEventID["GIVE_PICKUP_REWARDS_EVENT"] or eventId == NetEventID["NETWORK_CHECK_EXE_SIZE_EVENT"] or eventId == NetEventID["NETWORK_CHECK_CODE_CRCS_EVENT"] or eventId == NetEventID["PED_PLAY_PAIN_EVENT"] or eventId == NetEventID["REPORT_CASH_SPAWN_EVENT"] or eventId == NetEventID["NETWORK_CHECK_CATALOG_CRC"] then
+					if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(source)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(source)) then
+					else
+						if source ~= player.player_id() and player.is_player_valid(source) and not player.is_player_modder(source, custommodderflags["Bad Net Event"]) then
+							if f.value == 0 then
+								menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Bad Net Event", "Meteor Modder Detection", 12, 0x00A2FF)
+								player.set_player_as_modder(source, custommodderflags["Bad Net Event"])
+							elseif f.value == 1 then
+								menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Bad Net Event", "Meteor Modder Detection", 12, 0x00A2FF)
+							elseif f.value == 2 then
+								player.set_player_as_modder(source, custommodderflags["Bad Net Event"])
+							end
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if eventhooks["» Bad Net Event Detection"] then
@@ -12336,26 +12749,28 @@ feature["» Bad Script Event Detection"] = menu.add_feature("» Bad Script Event
 	settings["» Bad Script Event Detection"].Enabled = f.on
 	settings["» Bad Script Event Detection"].Value = f.value
 	if f.on then
-		eventhooks["» Bad Script Event Detection"] = hook.register_script_event_hook(function(source, target, params, count)
-			for i = 1, #params do
-				params[i] = params[i] & 0xFFFFFFFF
-			end
-			if ((params[2] ~= source) or (params[2] < 0) or (params[2] > 31) or (#params < 2) or (params[1] == 962740265) or (params[1] == -1386010354) or (params[1] == -399817245 and params[4] > 31) or (params[1] == -569621836 and params[4] >= 30583) or (params[1] == -1782442696 and prams[3] == 420 and params[4] == 69) or (params[1] == -621279188 and params[2] == 1) or (params[1] == 1463943751 and (params[5] == 3 or params[5] == 4) and (params[6] == 0 or params[6] == 1)) or (params[1] == 0xE56661F6) or (params[1] == 0x3FAC59CA) or (params[1] == 603406648 and params[3] == 217) or (params[1] == 962740265 and params[3] > 0 and params[3] < 13) or (params[1] == 1463943751) or (params[1] == 0x2FC154DC and params[3] == 869796886 and params[4] == 0)) and player.get_player_coords(source).z > 0 then
-				if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(source)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(source)) then
-				else
-					if source ~= player.player_id() and player.is_player_valid(source) and not player.is_player_modder(source, custommodderflags["Bad Script Event"]) then
-						if f.value == 0 then
-							menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Bad Script Event", "Meteor Modder Detection", 12, 0x00A2FF)
-							player.set_player_as_modder(source, custommodderflags["Bad Script Event"])
-						elseif f.value == 1 then
-							menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Bad Script Event", "Meteor Modder Detection", 12, 0x00A2FF)
-						elseif f.value == 2 then
-							player.set_player_as_modder(source, custommodderflags["Bad Script Event"])
+		if eventhooks["» Bad Script Event Detection"] == nil then
+			eventhooks["» Bad Script Event Detection"] = hook.register_script_event_hook(function(source, target, params, count)
+				for i = 1, #params do
+					params[i] = params[i] & 0xFFFFFFFF
+				end
+				if ((params[2] ~= source) or (params[2] < 0) or (params[2] > 31) or (#params < 2) or (params[1] == 962740265) or (params[1] == -1386010354) or (params[1] == -399817245 and params[4] > 31) or (params[1] == -569621836 and params[4] >= 30583) or (params[1] == -1782442696 and prams[3] == 420 and params[4] == 69) or (params[1] == -621279188 and params[2] == 1) or (params[1] == 1463943751 and (params[5] == 3 or params[5] == 4) and (params[6] == 0 or params[6] == 1)) or (params[1] == 0xE56661F6) or (params[1] == 0x3FAC59CA) or (params[1] == 603406648 and params[3] == 217) or (params[1] == 962740265 and params[3] > 0 and params[3] < 13) or (params[1] == 1463943751) or (params[1] == 0x2FC154DC and params[3] == 869796886 and params[4] == 0)) and player.get_player_coords(source).z > 0 then
+					if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(source)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(source)) then
+					else
+						if source ~= player.player_id() and player.is_player_valid(source) and not player.is_player_modder(source, custommodderflags["Bad Script Event"]) then
+							if f.value == 0 then
+								menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Bad Script Event", "Meteor Modder Detection", 12, 0x00A2FF)
+								player.set_player_as_modder(source, custommodderflags["Bad Script Event"])
+							elseif f.value == 1 then
+								menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Bad Script Event", "Meteor Modder Detection", 12, 0x00A2FF)
+							elseif f.value == 2 then
+								player.set_player_as_modder(source, custommodderflags["Bad Script Event"])
+							end
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 	end
 	if not f.on then
 		if eventhooks["» Bad Script Event Detection"] then
@@ -12374,26 +12789,28 @@ feature["» Stand User Detection"] = menu.add_feature("» Stand User", "value_st
 	settings["» Stand User Detection"].Value = f.value
 	if f.on then
 		has_someone_been_marked_as_stand_user = false
-		eventhooks["» Stand User Detection"] = hook.register_script_event_hook(function(source, target, params, count)
-			for i = 1, #params do
-				params[i] = params[i] & 0xFFFFFFFF
-			end
-			if ((params[1] == -1386010354) or (params[1] == -399817245 and params[4] > 31) or (params[1] == -569621836 and params[4] >= 30583) or (params[1] == -1782442696 and params[3] == 420 and params[4] == 69) or (params[1] == 1228916411 and params[3] > 10000) or (params[1] == 537760938 and params[2] == 2680059592720 and params[3] == 2680059592880 and params[4] == 539) or (params[1] == -371781708 and params[5] >= -2147483647) or (params[1] == -317318371 and params[5] >= -2147483647) or (params[1] == 911179316 and params[6] >= -2147483647) or (params[1] == 846342319 and params[3] >= -2147483647 and params[4] == 1) or (params[1] == -1991317864 and params[3] == 3 and params[4] >= -2147483647) or (params[1] == -1767058336 and params[3] >= -2147483647) or (params[1] == 296518236 and params[6] == 1) or (params[1] == 924535804 and params[3] >= -2147483647 and params[4] == 0)) and player.get_player_coords(source).z > 0 then
-				if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(source)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(source)) then
-				else
-					if source ~= player.player_id() and player.is_player_valid(source) and not player.is_player_modder(source, custommodderflags["Stand User"]) then
-						if f.value == 0 then
-							menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Stand User", "Meteor Modder Detection", 12, 0x00A2FF)
-							player.set_player_as_modder(source, custommodderflags["Stand User"])
-						elseif f.value == 1 then
-							menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Stand User", "Meteor Modder Detection", 12, 0x00A2FF)
-						elseif f.value == 2 then
-							player.set_player_as_modder(source, custommodderflags["Stand User"])
+		if eventhooks["» Stand User Detection"] == nil then
+			eventhooks["» Stand User Detection"] = hook.register_script_event_hook(function(source, target, params, count)
+				for i = 1, #params do
+					params[i] = params[i] & 0xFFFFFFFF
+				end
+				if ((params[1] == -1386010354) or (params[1] == -399817245 and params[4] > 31) or (params[1] == -569621836 and params[4] >= 30583) or (params[1] == -1782442696 and params[3] == 420 and params[4] == 69) or (params[1] == 1228916411 and params[3] > 10000) or (params[1] == 537760938 and params[2] == 2680059592720 and params[3] == 2680059592880 and params[4] == 539) or (params[1] == -371781708 and params[5] >= -2147483647) or (params[1] == -317318371 and params[5] >= -2147483647) or (params[1] == 911179316 and params[6] >= -2147483647) or (params[1] == 846342319 and params[3] >= -2147483647 and params[4] == 1) or (params[1] == -1991317864 and params[3] == 3 and params[4] >= -2147483647) or (params[1] == -1767058336 and params[3] >= -2147483647) or (params[1] == 296518236 and params[6] == 1) or (params[1] == 924535804 and params[3] >= -2147483647 and params[4] == 0)) and player.get_player_coords(source).z > 0 then
+					if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(source)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(source)) then
+					else
+						if source ~= player.player_id() and player.is_player_valid(source) and not player.is_player_modder(source, custommodderflags["Stand User"]) then
+							if f.value == 0 then
+								menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Stand User", "Meteor Modder Detection", 12, 0x00A2FF)
+								player.set_player_as_modder(source, custommodderflags["Stand User"])
+							elseif f.value == 1 then
+								menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Stand User", "Meteor Modder Detection", 12, 0x00A2FF)
+							elseif f.value == 2 then
+								player.set_player_as_modder(source, custommodderflags["Stand User"])
+							end
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 		while f.on do
 			system.yield(500)
 			if network.is_session_started() then
@@ -12769,23 +13186,25 @@ feature["» Modded Explosion Detection"] = menu.add_feature("» Modded Explosion
 	settings["» Modded Explosion Detection"].Enabled = f.on
 	settings["» Modded Explosion Detection"].Value = f.value
 	if f.on then
-		eventhooks["» Modded Explosion Detection"] = hook.register_net_event_hook(function(source, target, eventId)
-			if eventId == NetEventID["EXPLOSION_EVENT"] and utilities.get_distance_between(player.get_player_coords(player.player_id()), player.get_player_coords(source)) > 3000 and meteor_session_timer < utils.time_ms() and network.get_entity_player_is_spectating(player.player_id()) == nil and player.get_player_coords(player.player_id()).z > 0 and not freecam_player_cam and not guided_missile_object and not player_func.is_player_in_interior(source) and not player.is_player_spectating(player.player_id()) then
-				if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(source)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(source)) then
-				else
-					if source ~= player.player_id() and player.is_player_valid(source) and not player.is_player_modder(source, custommodderflags["Modded Explosion"]) then
-						if f.value == 0 then
-							menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Modded Explosion", "Meteor Modder Detection", 12, 0x00A2FF)
-							player.set_player_as_modder(source, custommodderflags["Modded Explosion"])
-						elseif f.value == 1 then
-							menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Modded Explosion", "Meteor Modder Detection", 12, 0x00A2FF)
-						elseif f.value == 2 then
-							player.set_player_as_modder(source, custommodderflags["Modded Explosion"])
+		if eventhooks["» Modded Explosion Detection"] == nil then
+			eventhooks["» Modded Explosion Detection"] = hook.register_net_event_hook(function(source, target, eventId)
+				if eventId == NetEventID["EXPLOSION_EVENT"] and utilities.get_distance_between(player.get_player_coords(player.player_id()), player.get_player_coords(source)) > 3000 and meteor_session_timer < utils.time_ms() and network.get_entity_player_is_spectating(player.player_id()) == nil and player.get_player_coords(player.player_id()).z > 0 and not freecam_player_cam and not guided_missile_object and not player_func.is_player_in_interior(source) and not player.is_player_spectating(player.player_id()) then
+					if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(source)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(source)) then
+					else
+						if source ~= player.player_id() and player.is_player_valid(source) and not player.is_player_modder(source, custommodderflags["Modded Explosion"]) then
+							if f.value == 0 then
+								menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Modded Explosion", "Meteor Modder Detection", 12, 0x00A2FF)
+								player.set_player_as_modder(source, custommodderflags["Modded Explosion"])
+							elseif f.value == 1 then
+								menu.notify("Player: " .. player.get_player_name(source) .. "\nReason: Modded Explosion", "Meteor Modder Detection", 12, 0x00A2FF)
+							elseif f.value == 2 then
+								player.set_player_as_modder(source, custommodderflags["Modded Explosion"])
+							end
 						end
 					end
 				end
-			end
-		end)
+			end)
+		end
 		local guilty = {}
 		while f.on do
 			system.yield(0)
@@ -12796,43 +13215,17 @@ feature["» Modded Explosion Detection"] = menu.add_feature("» Modded Explosion
 						guilty[explo_owner] = true
 					end
 				end
-				for i = 1, #DataMain.all_veh_explosions do
-					if natives.IS_EXPLOSION_IN_AREA(DataMain.all_veh_explosions[i], player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000):__tointeger() == 1 then
-						local explo_owner = player.get_player_from_ped(natives.GET_OWNER_OF_EXPLOSION_IN_ANGLED_AREA(DataMain.all_veh_explosions[i], player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000, 1000.0):__tointeger())
-						if player.is_player_valid(explo_owner) and not player.is_player_in_any_vehicle(explo_owner) then
-							guilty[explo_owner] = true
-						end
-					end
-				end
 				for i = 1, #DataMain.all_unnatural_interior_explosions do
 					if natives.IS_EXPLOSION_IN_AREA(DataMain.all_unnatural_interior_explosions[i], player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000):__tointeger() == 1 then
 						local explo_owner = player.get_player_from_ped(natives.GET_OWNER_OF_EXPLOSION_IN_ANGLED_AREA(DataMain.all_unnatural_interior_explosions[i], player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000, 1000.0):__tointeger())
-						if player.is_player_valid(explo_owner) and player_func.is_player_in_interior(explo_owner) then
+						if player.is_player_valid(explo_owner) and player_func.get_accurate_non_interior_bool(explo_owner) then
 							guilty[explo_owner] = true
 						end
-					end
-				end
-				if natives.IS_EXPLOSION_IN_AREA(61, player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000):__tointeger() == 1 then
-					local explo_owner = player.get_player_from_ped(natives.GET_OWNER_OF_EXPLOSION_IN_ANGLED_AREA(61, player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000, 1000.0):__tointeger())
-					if player.is_player_valid(explo_owner) and not weapon.has_ped_got_weapon(player.get_player_ped(explo_owner), 0x555AF99A) then
-						guilty[explo_owner] = true
-					end
-				end
-				if natives.IS_EXPLOSION_IN_AREA(45, player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000):__tointeger() == 1 then
-					local explo_owner = player.get_player_from_ped(natives.GET_OWNER_OF_EXPLOSION_IN_ANGLED_AREA(45, player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000, 1000.0):__tointeger())
-					if player.is_player_valid(explo_owner) and not weapon.has_ped_got_weapon(player.get_player_ped(explo_owner), 0xA914799) and not weapon.has_ped_got_weapon(player.get_player_ped(explo_owner), 0x6A6C02E0) then
-						guilty[explo_owner] = true
 					end
 				end
 				if natives.IS_EXPLOSION_IN_AREA(35, player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000):__tointeger() == 1 then
 					local explo_owner = player.get_player_from_ped(natives.GET_OWNER_OF_EXPLOSION_IN_ANGLED_AREA(35, player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000, 1000.0):__tointeger())
 					if player.is_player_valid(explo_owner) then
-						guilty[explo_owner] = true
-					end
-				end
-				if natives.IS_EXPLOSION_IN_AREA(36, player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000):__tointeger() == 1 then
-					local explo_owner = player.get_player_from_ped(natives.GET_OWNER_OF_EXPLOSION_IN_ANGLED_AREA(36, player.get_player_coords(player.player_id()).x - 1000, player.get_player_coords(player.player_id()).y - 1000, player.get_player_coords(player.player_id()).z - 1000, player.get_player_coords(player.player_id()).x + 1000, player.get_player_coords(player.player_id()).y + 1000, player.get_player_coords(player.player_id()).z + 1000, 1000.0):__tointeger())
-					if player.is_player_valid(explo_owner) and not weapon.has_ped_got_weapon(player.get_player_ped(explo_owner), 0x6D544C99) then
 						guilty[explo_owner] = true
 					end
 				end
@@ -12886,42 +13279,6 @@ feature["» Modded Explosion Detection"] = menu.add_feature("» Modded Explosion
 end)
 feature["» Modded Explosion Detection"]:set_str_data({"Mark & Notify", "Notify", "Mark"})
 feature["» Modded Explosion Detection"].value = 0
-
-feature["» Invalid Movement Detection"] = menu.add_feature("» Invalid Movement", "value_str", localparents["» Modder Detections"].id, function(f, pid)
-	settings["» Invalid Movement Detection"].Enabled = f.on
-	settings["» Invalid Movement Detection"].Value = f.value
-	if f.on then
-		while f.on do
-			system.yield(0)
-			if network.is_session_started() then
-				for pid = 0, 31 do
-					if player.is_player_valid(pid) then
-						if entity.get_entity_speed(player.get_player_ped(pid)) == 0.0 and entity.get_entity_velocity(player.get_player_ped(pid)) == v3(0.0, 0.0, 0.0) and natives.GET_ENTITY_HEIGHT_ABOVE_GROUND(player.get_player_ped(pid)):__tonumber() > 16 and player_func.is_player_moving_fast(pid) and utilities.get_distance_between(player.get_player_coords(pid), player.get_player_coords(player.player_id())) < 400 and player.get_player_coords(pid).z > 0 and entity.is_entity_visible(player.get_player_ped(pid)) and not entity.is_entity_dead(player.get_player_ped(pid)) and not entity.is_entity_in_air(player.get_player_ped(pid)) and not entity.get_entity_god_mode(player.get_player_ped(pid)) and natives.IS_PED_JUMPING_OUT_OF_VEHICLE(player.get_player_ped(pid)):__tointeger() == 0 and natives.IS_PED_JACKING(player.get_player_ped(pid)):__tointeger() == 0 and not entity.is_entity_in_water(player.get_player_ped(pid)) and not ped.is_ped_ragdoll(player.get_player_ped(pid)) and not player.is_player_in_any_vehicle(pid) and natives.IS_PLAYER_IN_CUTSCENE(pid):__tointeger() == 0 and natives.IS_PLAYER_IN_CUTSCENE(player.player_id()):__tointeger() == 0 and not player_func.is_player_in_interior(pid) and not ai.is_task_active(player.get_player_ped(pid), 16) and not ai.is_task_active(player.get_player_ped(pid), 17) and not ai.is_task_active(player.get_player_ped(pid), 18) and not ai.is_task_active(player.get_player_ped(pid), 19) and not ai.is_task_active(player.get_player_ped(pid), 54) and not ai.is_task_active(player.get_player_ped(pid), 152) and not ai.is_task_active(player.get_player_ped(pid), 162) and not ai.is_task_active(player.get_player_ped(pid), 176) and not ai.is_task_active(player.get_player_ped(pid), 177) and not ai.is_task_active(player.get_player_ped(pid), 178) and not ai.is_task_active(player.get_player_ped(pid), 179) and not ai.is_task_active(player.get_player_ped(pid), 180) and not ai.is_task_active(player.get_player_ped(pid), 335) and not ai.is_task_active(player.get_player_ped(pid), 422) and not ai.is_task_active(player.get_player_ped(pid), 423) then
-							if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(pid)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(pid)) then
-							else
-								if pid ~= player.player_id() and player.is_player_valid(pid) and not player.is_player_modder(pid, custommodderflags["Invalid Movement"]) then
-									if f.value == 0 then
-										menu.notify("Player: " .. tostring(player.get_player_name(pid)) .. "\nReason: Invalid Movement", "Meteor Modder Detection", 12, 0x00A2FF)
-										player.set_player_as_modder(pid, custommodderflags["Invalid Movement"])
-									elseif f.value == 1 then
-										menu.notify("Player: " .. tostring(player.get_player_name(pid)) .. "\nReason: Invalid Movement", "Meteor Modder Detection", 12, 0x00A2FF)
-										InvalidMovementDetectionPlayer[pid] = true
-									elseif f.value == 2 then
-										player.set_player_as_modder(pid, custommodderflags["Invalid Movement"])
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-	settings["» Invalid Movement Detection"].Enabled = f.on
-	settings["» Invalid Movement Detection"].Value = f.value
-end)
-feature["» Invalid Movement Detection"]:set_str_data({"Mark & Notify", "Notify", "Mark"})
-feature["» Invalid Movement Detection"].value = 0
 
 feature["» Modded Vehicle Modification Detection"] = menu.add_feature("» Modded Vehicle Modification", "value_str", localparents["» Modder Detections"].id, function(f, pid)
 	settings["» Modded Vehicle Modification Detection"].Enabled = f.on
@@ -13025,56 +13382,66 @@ feature["» Modded Vehicle Modification Detection"] = menu.add_feature("» Modde
 					if player.is_player_valid(pid) and player.is_player_in_any_vehicle(pid) and utilities.get_spectator_of_player(pid) == nil and utilities.get_distance_between(player.get_player_coords(pid), player.get_player_coords(player.player_id())) > 4 and utilities.get_distance_between(player.get_player_coords(pid), player.get_player_coords(player.player_id())) < 1000 and player.get_player_coords(pid).z > 0 and player.get_player_coords(pid).z < 200 and player_veh_id[pid] ~= nil and not network.has_control_of_entity(player.get_player_vehicle(pid)) and not entity.is_entity_dead(player.get_player_ped(pid)) and not entity.is_entity_dead(player.get_player_vehicle(pid)) and not player.is_player_god(pid) and not player_func.get_accurate_non_interior_bool(pid) and not entity.is_entity_in_water(player.get_player_vehicle(pid)) then
 						if player_veh_id[pid] ~= nil and player_veh_id[pid] == player.get_player_vehicle(pid) and entity.get_entity_model_hash(player.get_player_vehicle(pid)) ~= 2382949506 then
 							local guilty = false
+							local entries = 0
 							if player_veh_plate_text[pid] ~= nil then
 								if vehicle.get_vehicle_number_plate_text(player.get_player_vehicle(pid)) ~= player_veh_plate_text[pid] then
 									guilty = true
+									entries = entries + 1
 								end
 							end
 							if player_veh_plate_index[pid] ~= nil then
 								if vehicle.get_vehicle_number_plate_index(player.get_player_vehicle(pid)) ~= player_veh_plate_index[pid] then
 									guilty = true
+									entries = entries + 1
 								end
 							end
 							if player_veh_wheel_type[pid] ~= nil then
 								if vehicle.get_vehicle_wheel_type(player.get_player_vehicle(pid)) ~= player_veh_wheel_type[pid] then
 									guilty = true
+									entries = entries + 1
 								end
 							end
 							if player_veh_window_tint[pid] ~= nil then
 								if vehicle.get_vehicle_window_tint(player.get_player_vehicle(pid)) ~= player_veh_window_tint[pid] then
 									guilty = true
+									entries = entries + 1
 								end
 							end
 							if player_veh_headl_colour[pid] ~= nil then
 								if vehicle.get_vehicle_headlight_color(player.get_player_vehicle(pid)) ~= player_veh_headl_colour[pid] then
 									guilty = true
+									entries = entries + 1
 								end
 							end
 							if player_veh_wheel_colour[pid] ~= nil then
 								if vehicle.get_vehicle_custom_wheel_colour(player.get_player_vehicle(pid)) ~= player_veh_wheel_colour[pid] then
 									guilty = true
+									entries = entries + 1
 								end
 							end
 							if player_veh_prim_colour[pid] ~= nil then
 								if vehicle.get_vehicle_custom_primary_colour(player.get_player_vehicle(pid)) ~= player_veh_prim_colour[pid] then
 									guilty = true
+									entries = entries + 1
 								end
 							end
 							if player_veh_sec_colour[pid] ~= nil then
 								if vehicle.get_vehicle_custom_secondary_colour(player.get_player_vehicle(pid)) ~= player_veh_sec_colour[pid] then
 									guilty = true
+									entries = entries + 1
 								end
 							end
 							for i = 0, 49 do
 								if player_veh_mods["" .. i .. ""][pid] ~= nil then
 									if vehicle.get_num_vehicle_mods(player.get_player_vehicle(pid), i) ~= player_veh_mods["" .. i .. ""][pid] then
 										guilty = true
+										entries = entries + 1
 									end
 								end
 							end
 							if guilty then
 								local entity_owner = memory.get_entity_owner(player.get_player_vehicle(pid))
-								if entity_owner ~= nil and entity_owner ~= player.player_id() then
+								if entity_owner ~= nil and entity_owner ~= player.player_id() and entries > 1 then
 									if player.is_player_valid(entity_owner) then
 										if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(entity_owner)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(entity_owner)) then
 										else
@@ -13137,8 +13504,8 @@ feature["» Scripted Entity Spawn Detection"] = menu.add_feature("» Scripted En
 					for i = 1, #peds do
 						if not found_index then
 							if not ped.is_ped_a_player(peds[i]) then
-								if memory.is_script_entity(peds[i]) and not network.has_control_of_entity(peds[i]) then
-									if natives.GET_ENTITY_SCRIPT(peds[i], 0):__tostring(true) == nil or natives.GET_ENTITY_SCRIPT(peds[i], 0):__tostring(true) == "nil" or natives.GET_ENTITY_SCRIPT(peds[i], 0):__tostring(true) == "main" or natives.GET_ENTITY_SCRIPT(peds[i], 0):__tostring(true) == "freemode" then
+								if memory.network_is_script_entity(peds[i]) and not network.has_control_of_entity(peds[i]) then
+									if (natives.GET_ENTITY_SCRIPT(peds[i], 0):__tostring(true) == nil or natives.GET_ENTITY_SCRIPT(peds[i], 0):__tostring(true) == "nil" or natives.GET_ENTITY_SCRIPT(peds[i], 0):__tostring(true) == "main" or natives.GET_ENTITY_SCRIPT(peds[i], 0):__tostring(true) == "freemode") and not entity.is_entity_dead(peds[i]) then
 										if not PedModel.get_ped_model_from_hash(entity.get_entity_model_hash(peds[i])) == "unknown" then
 											guilty = true
 											guilty_entity = peds[i]
@@ -13152,7 +13519,7 @@ feature["» Scripted Entity Spawn Detection"] = menu.add_feature("» Scripted En
 					local vehicles = vehicle.get_all_vehicles()
 					for i = 1, #vehicles do
 						if not found_index then
-							if memory.is_script_entity(vehicles[i]) and not network.has_control_of_entity(vehicles[i]) and utilities.get_distance_between(player.get_player_coords(player.player_id()), vehicles[i]) < 1000 then
+							if memory.network_is_script_entity(vehicles[i]) and not network.has_control_of_entity(vehicles[i]) and utilities.get_distance_between(player.get_player_coords(player.player_id()), vehicles[i]) < 1000 then
 								if not entity.get_entity_model_hash(vehicles[i]) == gameplay.get_hash_key("sparrow") and not entity.get_entity_model_hash(vehicles[i]) == gameplay.get_hash_key("premier") and not decorator.decor_exists_on(vehicles[i], "Player_Vehicle") and not decorator.decor_exists_on(vehicles[i], "PV_Slot") and not decorator.decor_exists_on(vehicles[i], "Not_Allow_As_Saved_Veh") and not decorator.decor_exists_on(vehicles[i], "CreatedByPegasus") and not streaming.is_model_a_train(entity.get_entity_model_hash(vehicles[i])) and ((decorator.decor_exists_on(vehicles[i], "MPBitset") and (decorator.decor_get_int(vehicles[i], "MPBitset") == 0 or decorator.decor_get_int(vehicles[i], "MPBitset") == 1 << 10)) or (not decorator.decor_exists_on(vehicles[i], "MPBitset"))) then
 									if not VehicleModel.get_vehicle_model_from_hash(entity.get_entity_model_hash(vehicles[i])) == "unknown" then
 										guilty = true
@@ -13166,7 +13533,7 @@ feature["» Scripted Entity Spawn Detection"] = menu.add_feature("» Scripted En
 					local objects = object.get_all_objects()
 					for i = 1, #objects do
 						if not found_index then
-							if memory.is_script_entity(objects[i]) and not network.has_control_of_entity(objects[i]) then
+							if memory.network_is_script_entity(objects[i]) and not network.has_control_of_entity(objects[i]) then
 								local is_object_excluded = false
 								for a = 1, #exclude_object_hashes do
 									if entity.get_entity_model_hash(objects[i]) == exclude_object_hashes[a] then
@@ -13257,54 +13624,6 @@ feature["» No Ragdoll Detection"] = menu.add_feature("» No Ragdoll", "value_st
 end)
 feature["» No Ragdoll Detection"]:set_str_data({"Mark & Notify", "Notify", "Mark"})
 feature["» No Ragdoll Detection"].value = 0
-
-feature["» Infinite Ammo Detection"] = menu.add_feature("» Infinite Ammo", "value_str", localparents["» Modder Detections"].id, function(f, pid)
-	settings["» Infinite Ammo Detection"].Enabled = f.on
-	settings["» Infinite Ammo Detection"].Value = f.value
-	if f.on then
-		local last_player_weapon = {}
-		local last_player_ammo = {}
-		while f.on do
-			system.yield(0)
-			if network.is_session_started() then
-				for pid = 0, 31 do
-					if player.is_player_valid(pid) then
-						if player.is_player_playing(pid) and utilities.get_distance_between(player.get_player_coords(player.player_id()), player.get_player_coords(pid)) < 400 and not player.is_player_in_any_vehicle(pid) and not player_func.is_player_in_interior(pid) then
-							local real_ammo, real_max_ammo = utilities.get_ped_ammo(player.get_player_ped(pid), ped.get_current_ped_weapon(player.get_player_ped(pid)))
-							if real_ammo > 2 and real_max_ammo > 2 and ped.get_current_ped_weapon(player.get_player_ped(pid)) ~= 2939590305 and ped.get_current_ped_weapon(player.get_player_ped(pid)) ~= 1171102963 and ped.get_current_ped_weapon(player.get_player_ped(pid)) ~= 911657153 then
-								if ped.is_ped_shooting(player.get_player_ped(pid)) then
-									system.wait(800)
-									local real_ammo, real_max_ammo = utilities.get_ped_ammo(player.get_player_ped(pid), ped.get_current_ped_weapon(player.get_player_ped(pid)))
-									if real_ammo > 2 and real_max_ammo > 2 and ped.get_current_ped_weapon(player.get_player_ped(pid)) ~= 2939590305 and ped.get_current_ped_weapon(player.get_player_ped(pid)) ~= 1171102963 and ped.get_current_ped_weapon(player.get_player_ped(pid)) ~= 911657153 then
-										if real_ammo == real_max_ammo then
-											if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(pid)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(pid)) then
-											else
-												if pid ~= player.player_id() and player.is_player_valid(pid) and not player.is_player_modder(pid, custommodderflags["Infinite Ammo"]) then
-													if f.value == 0 then
-														menu.notify("Player: " .. player.get_player_name(pid) .. "\nReason: Infinite Ammo", "Meteor Modder Detection", 12, 0x00A2FF)
-														player.set_player_as_modder(pid, custommodderflags["Infinite Ammo"])
-													elseif f.value == 1 then
-														menu.notify("Player: " .. player.get_player_name(pid) .. "\nReason: Infinite Ammo", "Meteor Modder Detection", 12, 0x00A2FF)
-													elseif f.value == 2 then
-														player.set_player_as_modder(pid, custommodderflags["Infinite Ammo"])
-													end
-												end
-											end
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-	settings["» Infinite Ammo Detection"].Enabled = f.on
-	settings["» Infinite Ammo Detection"].Value = f.value
-end)
-feature["» Infinite Ammo Detection"]:set_str_data({"Mark & Notify", "Notify", "Mark"})
-feature["» Infinite Ammo Detection"].value = 0
 
 feature["» Anti AFK Bypass Detection"] = menu.add_feature("» Anti AFK Bypass", "value_str", localparents["» Modder Detections"].id, function(f, pid)
 	settings["» Anti AFK Bypass Detection"].Enabled = f.on
@@ -13425,6 +13744,69 @@ feature["» Super Run Detection"] = menu.add_feature("» Super Run", "value_str"
 end)
 feature["» Super Run Detection"]:set_str_data({"Mark & Notify", "Notify", "Mark"})
 feature["» Super Run Detection"].value = 0
+
+feature["» Lobby Spoof Detection"] = menu.add_feature("» Lobby Spoof", "value_str", localparents["» Modder Detections"].id, function(f, pid)
+	settings["» Lobby Spoof Detection"].Enabled = f.on
+	settings["» Lobby Spoof Detection"].Value = f.value
+	if f.on then
+		local PlayerNames = {}
+		local PlayerSCIDs = {}
+		while f.on do
+			system.yield(4000)
+			if network.is_session_started() then
+				for pid = 0, 31 do
+					if player.is_player_valid(pid) then
+						table.insert(PlayerNames, player.get_player_name(pid))
+						table.insert(PlayerSCIDs, player.get_player_scid(pid))
+					end
+				end
+				local name_entries = 0
+				for a = 1, #PlayerNames do
+					if PlayerNames[a] ~= nil and PlayerNames[a + 1] ~= nil then
+						if PlayerNames[a] == PlayerNames[a + 1] then
+							name_entries = name_entries + 1
+						end
+					end
+				end
+				local scid_entries = 0
+				for a = 1, #PlayerSCIDs do
+					if PlayerSCIDs[a] ~= nil and PlayerSCIDs[a + 1] ~= nil then
+						if PlayerSCIDs[a] > 0 and PlayerSCIDs[a + 1] > 0 then
+							if PlayerSCIDs[a] == PlayerSCIDs[a + 1] then
+								scid_entries = scid_entries + 1
+							end
+						end
+					end
+				end
+				if name_entries > 4 or scid_entries > 4 then
+					local guilty_player = player.get_host()
+					if guilty_player ~= nil then
+						if player.is_player_valid(guilty_player) then
+							if (settings["» Exclude Friends From Detections"].Enabled and player.is_player_friend(guilty_player)) or (settings["» Exclude Whitelisted Players From Detections"].Enabled and not player.can_player_be_modder(guilty_player)) then
+							else
+								if guilty_player ~= player.player_id() and player.is_player_valid(guilty_player) and not player.is_player_modder(guilty_player, custommodderflags["Lobby Spoof"]) then
+									if f.value == 0 then
+										menu.notify("Player: " .. player.get_player_name(guilty_player) .. "\nReason: Lobby Spoof", "Meteor Modder Detection", 12, 0x00A2FF)
+										player.set_player_as_modder(guilty_player, custommodderflags["Lobby Spoof"])
+									elseif f.value == 1 and not LobbySpoofDetectionPlayer[guilty_player] then
+										menu.notify("Player: " .. player.get_player_name(guilty_player) .. "\nReason: Lobby Spoof", "Meteor Modder Detection", 12, 0x00A2FF)
+										LobbySpoofDetectionPlayer[guilty_player] = true
+									elseif f.value == 2 then
+										player.set_player_as_modder(guilty_player, custommodderflags["Lobby Spoof"])
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	settings["» Lobby Spoof Detection"].Enabled = f.on
+	settings["» Lobby Spoof Detection"].Value = f.value
+end)
+feature["» Lobby Spoof Detection"]:set_str_data({"Mark & Notify", "Notify", "Mark"})
+feature["» Lobby Spoof Detection"].value = 0
 
 feature["» Exclude Friends From Detections"] = menu.add_feature("» Exclude Friends", "toggle", localparents["» Modder Detections"].id, function(f)
     settings["» Exclude Friends From Detections"].Enabled = f.on
@@ -14288,6 +14670,9 @@ menu.add_feature("» Create New Profile", "action", localparents["» General"].i
 											end
 											if tostring(parts[3]) ~= "nil" then
 												feature["" .. parts[1] .. ""].value = tonumber(parts[3])
+												if settings["" .. parts[1] .. ""].Value then
+													settings["" .. parts[1] .. ""].Value = tonumber(parts[3])
+												end
 											end
 										end
 									end
@@ -14368,6 +14753,9 @@ do
 									end
 									if tostring(parts[3]) ~= "nil" then
 										feature["" .. parts[1] .. ""].value = tonumber(parts[3])
+										if settings["" .. parts[1] .. ""].Value then
+											settings["" .. parts[1] .. ""].Value = tonumber(parts[3])
+										end
 									end
 								end
 							end
@@ -14532,6 +14920,14 @@ feature["» Header Height Offset"].min = -1.00
 feature["» Header Height Offset"].mod = 0.01
 feature["» Header Height Offset"].value = 0.00
 
+feature["» Header Alpha"] = menu.add_feature("» Header Alpha", "autoaction_value_i", localparents["» Gif Headers"].id, function(f)
+	settings["» Header Alpha"].Value = f.value
+end)
+feature["» Header Alpha"].max = 255
+feature["» Header Alpha"].min = 0
+feature["» Header Alpha"].mod = 5
+feature["» Header Alpha"].value = 255
+
 feature["» Header Playback Speed"] = menu.add_feature("» Header Playback Speed", "autoaction_value_i", localparents["» Gif Headers"].id, function(f)
 	settings["» Header Playback Speed"].Value = f.value
 end)
@@ -14554,41 +14950,45 @@ do
 					for a = 1, #gif_pack_assets do
 						all_registered_sprites[#all_registered_sprites + 1] = scriptdraw.register_sprite(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\GIF\\" .. all_gif_packs[i] .. "\\", gif_pack_assets[a]))
 					end
-					local HeaderAlphaFeat = menu.get_feature_by_hierarchy_key("local.settings.menu_ui.menu_colors.header_alpha")
 					local MenuXFeat = menu.get_feature_by_hierarchy_key("local.settings.menu_x")
 					local MenuYFeat = menu.get_feature_by_hierarchy_key("local.settings.menu_y")
 					local ElementWidthFeat = menu.get_feature_by_hierarchy_key("local.settings.menu_ui.menu_layout.element_width")
-					while f.on do
-						if #gif_pack_assets > 0 then
-							for a = 1, #gif_pack_assets do
-								-- Thanks to Proddy for the math
-								local spriteSize = scriptdraw.get_sprite_size(all_registered_sprites[a])
-								local scale = ElementWidthFeat.value / spriteSize.x
-
-								spriteSize = spriteSize * scale
-
-								local menuX = MenuXFeat.value
-								local menuY = MenuYFeat.value
-
-								local topLeftX = (menuX + spriteSize.x / 2)
-								local topLeftY = (menuY + 1 - spriteSize.y / 2) or (menuY + spriteSize.y / 2)
-
-								local x = scriptdraw.pos_pixel_to_rel_x(topLeftX)
-								local y = scriptdraw.pos_pixel_to_rel_y(topLeftY)
-
-								local alpha = HeaderAlphaFeat.value
-
-								local time = utils.time_ms() + feature["» Header Playback Speed"].value
-								while time > utils.time_ms() do
-									scriptdraw.draw_sprite(all_registered_sprites[a], v2(x, y + settings["» Header Height Offset"].Value), scale, 0.0, text_func.rgba_to_uint32_t(255, 255, 255, alpha))
-									system.yield(0)
+					threads["» Header Gif Packs " .. i] = menu.create_thread(function()
+						while f.on do
+							if #gif_pack_assets > 0 then
+								for a = 1, #gif_pack_assets do
+									local time = utils.time_ms() + feature["» Header Playback Speed"].value
+									while time > utils.time_ms() do
+										if menu.is_open() then
+											-- Credits to Proddy for the math
+											local spriteSize = scriptdraw.get_sprite_size(all_registered_sprites[a])
+											local scale = ElementWidthFeat.value / spriteSize.x
+		
+											spriteSize = spriteSize * scale
+		
+											local menuX = MenuXFeat.value
+											local menuY = MenuYFeat.value
+		
+											local topLeftX = (menuX + spriteSize.x / 2)
+											local topLeftY = (menuY + 1 - spriteSize.y / 2) or (menuY + spriteSize.y / 2)
+		
+											local x = scriptdraw.pos_pixel_to_rel_x(topLeftX)
+											local y = scriptdraw.pos_pixel_to_rel_y(topLeftY)
+											scriptdraw.draw_sprite(all_registered_sprites[a], v2(x, y + settings["» Header Height Offset"].Value), scale, 0.0, text_func.rgba_to_uint32_t(255, 255, 255, settings["» Header Alpha"].Value))
+										end
+										system.yield(0)
+									end
 								end
 							end
+							system.yield(0)
 						end
-						system.yield(0)
-					end
+					end, nil)
 				end
 				if not f.on then
+					if threads["» Header Gif Packs " .. i] then
+						menu.delete_thread(threads["» Header Gif Packs " .. i])
+						threads["» Header Gif Packs " .. i] = nil
+					end
 					all_registered_sprites = {}
 				end
 				settings["» Header Gif Packs " .. i].Enabled = f.on
@@ -14682,7 +15082,41 @@ feature["» Downgrade To Standard"] = menu.add_feature("» Downgrade To Standard
 end)
 
 localparents["» Script Updater"] = menu.add_feature("» Script Updater", "parent", localparents["» General"].id, function()
-	menu.notify("This does nothing at the moment, just ignore it", Meteor, 12, 0x00A2FF)
+	menu.notify("You are not supposed to use that shit atm", Meteor, 12, 0x00A2FF)
+end)
+
+menu.add_feature("» test", "action", localparents["» Script Updater"].id, function(f)
+	local code, MainMeteor = web.get("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor.lua")
+	menu.notify(MainMeteor)
+end)
+
+menu.add_feature("» tree", "action", localparents["» Script Updater"].id, function(f)
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Data/DataMain.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Data/LoggedPlayers.log")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Data/ModderFlags.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Data/RememberedPlayers.log")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Data/Settings.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Lib/Memory.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Lib/Menyoo.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Lib/Natives.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Lib/Player_Func.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Lib/Script_Func.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Lib/Text_Func.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Lib/Utils.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Mapper/NetEventIDs.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Mapper/NetEventNames.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Mapper/ObjectModels.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Mapper/PedModels.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Mapper/UserNetEventNames.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/Mapper/VehicleModels.lua")
+	menu.notify("https://raw.githubusercontent.com/RulyPancake/MeteorUpdate/main/Meteor/SafeMode.lua")
+end)
+
+menu.add_feature("» ver", "action", localparents["» Script Updater"].id, function(f)
+	local Response, MainMeteorVersion = web.get("https://raw.githubusercontent.com/RulyPancake/Meteor/main/Version.txt")
+	menu.notify(MainMeteorVersion)
+	menu.notify(tostring(MainMeteorVersion == MeteorVer .. "\n"))
 end)
 
 menu.add_player_feature("» Set Bounty", "action_value_str", playerparents["» Script Events"], function(f, pid)
@@ -18718,6 +19152,48 @@ menu.add_player_feature("» Give All Weapons", "action", playerparents["» Frien
 	end
 end)
 
+menu.add_player_feature("» Give Collectibles", "action_value_str", playerparents["» Friendly"], function(f, pid)
+    if f.value == 0 then
+        for i = 0, 9 do
+            script.trigger_script_event(995853474, pid, {1, 0, i, 1, 1, 1})
+            script.trigger_script_event(995853474, pid, {1, 1, i, 1, 1, 1})
+            script.trigger_script_event(995853474, pid, {1, 3, i, 1, 1, 1})
+            script.trigger_script_event(995853474, pid, {1, 6, i, 1, 1, 1})
+        end
+        for i = 0, 19 do
+            script.trigger_script_event(995853474, pid, {1, 4, i, 1, 1, 1})
+        end
+        script.trigger_script_event(995853474, pid, {1, 2, 0, 1, 1, 1})
+        script.trigger_script_event(995853474, pid, {1, 2, 1, 1, 1, 1})
+        script.trigger_script_event(995853474, pid, {1, 5, 0, 1, 1, 1})
+    elseif f.value == 1 then
+        for i = 0, 9 do
+            script.trigger_script_event(995853474, pid, {1, 0, i, 1, 1, 1})
+        end
+    elseif f.value == 2 then
+        for i = 0, 9 do
+            script.trigger_script_event(995853474, pid, {1, 1, i, 1, 1, 1})
+        end
+    elseif f.value == 3 then
+        script.trigger_script_event(995853474, pid, {1, 2, 0, 1, 1, 1})
+        script.trigger_script_event(995853474, pid, {1, 2, 1, 1, 1, 1})
+    elseif f.value == 4 then
+        for i = 0, 9 do
+            script.trigger_script_event(995853474, pid, {1, 3, i, 1, 1, 1})
+        end
+    elseif f.value == 5 then
+        for i = 0, 19 do
+            script.trigger_script_event(995853474, pid, {1, 4, i, 1, 1, 1})
+        end
+    elseif f.value == 6 then
+        script.trigger_script_event(995853474, pid, {1, 5, 0, 1, 1, 1})
+    elseif f.value == 7 then
+        for i = 0, 9 do
+            script.trigger_script_event(995853474, pid, {1, 6, i, 1, 1, 1})
+        end
+    end
+end):set_str_data({"All", "Movie Props", "Hidden Caches", "Treasure Chests", "Radio Antennas", "Media USBs", "Shipwrecks", "Burried Stashes"})
+
 menu.add_player_feature("» Send SMS", "action", playerparents["» Friendly"], function(f, pid)
 	local input_stat, input_val = input.get("Enter SMS String", "", 999, 0)
     if input_stat == 1 then
@@ -18937,59 +19413,6 @@ end):set_str_data({
 	"Me",
 	"Waypoint"
 })
-
-menu.add_player_feature("» Gift Vehicle", "action", playerparents["» Vehicle"], function(f, pid)
-	if player.is_player_in_any_vehicle(pid) then
-		local veh = player.get_player_vehicle(pid)
-		utilities.request_control(veh)
-
-		local iVar0
-		local iVar5
-		local iVar2
-
-		decorator.decor_register("Player_Vehicle", 3)
-		decorator.decor_register("Previous_Owner", 3)
-		decorator.decor_register("Vehicle_Reward", 3)
-		decorator.decor_register("MPBitset", 3)
-		decorator.decor_register("Veh_Modded_By_Player", 3)
-
-		if decorator.decor_exists_on(veh, "MPBitset") then
-			iVar5 = decorator.decor_get_int(veh, "MPBitset")
-		end
-		if entity.is_entity_visible(veh) then
-			if entity.is_an_entity(veh) then
-				vehicle.set_vehicle_doors_locked_for_all_players(veh, true)
-				natives.LOCK_DOORS_WHEN_NO_LONGER_NEEDED(veh)
-			end
-			if decorator.decor_exists_on(veh, "Player_Vehicle") then
-				decorator.decor_set_int(veh, "Player_Vehicle", natives.NETWORK_HASH_FROM_PLAYER_HANDLE(natives.INT_TO_PLAYERINDEX(pid):__tointeger()):__tointeger())
-			else
-				iVar0 = decorator.decor_get_int(veh, "Player_Vehicle")
-				decorator.decor_set_int(veh, "Player_Vehicle", natives.NETWORK_HASH_FROM_PLAYER_HANDLE(natives.INT_TO_PLAYERINDEX(pid):__tointeger()):__tointeger())
-			end
-			if iVar0 ~= nil and iVar0 ~= -1 then
-				if decorator.decor_exists_on(veh, "Previous_Owner") then
-					decorator.decor_set_int(veh, "Previous_Owner", iVar0)
-				else
-					decorator.decor_set_int(veh, "Previous_Owner", iVar0)
-				end
-			end
-		end
-		if not decorator.decor_exists_on(veh, "Vehicle_Reward") then
-			decorator.decor_set_bool(veh, "Vehicle_Reward", true)
-			decorator.decor_set_int(veh, "Vehicle_Reward", natives.NETWORK_HASH_FROM_PLAYER_HANDLE(natives.INT_TO_PLAYERINDEX(pid):__tointeger()):__tointeger())
-		end
-		iVar2 = decorator.decor_get_int(veh, "Veh_Modded_By_Player")
-		if iVar2 ~= 0 and iVar2 ~= -1 then
-			decorator.decor_set_int(veh, "Veh_Modded_By_Player", -1)
-		end
-		natives.SET_VEHICLE_CAN_SAVE_IN_GARAGE(veh, true)
-		vehicle.set_vehicle_has_been_owned_by_player(veh, true)
-		vehicle.set_vehicle_stolen(veh, false)
-	else
-		menu.notify("Player is not in a vehicle", Meteor, 3, 211)
-	end
-end)
 
 menu.add_player_feature("» Kill Engine", "action", playerparents["» Vehicle"], function(f, pid)
 	if player.is_player_in_any_vehicle(pid) then
@@ -21914,6 +22337,7 @@ menu.add_player_feature("» Mark Player As Modder", "action_value_str", playerpa
 		InvalidEntitySpawnDetectionPlayer[pid] = true
 		NoRagdollDetectionPlayer[pid] = true
 		SuperRunDetectionPlayer[pid] = true
+		LobbySpoofDetectionPlayer[pid] = true
 	else
 		player.set_player_as_modder(pid, 1 << f.value - 1)
 	end
@@ -21940,6 +22364,7 @@ menu.add_player_feature("» Unmark Player As Modder", "action_value_str", player
 		InvalidEntitySpawnDetectionPlayer[pid] = false
 		NoRagdollDetectionPlayer[pid] = false
 		SuperRunDetectionPlayer[pid] = false
+		LobbySpoofDetectionPlayer[pid] = false
 	else
 		player.unset_player_as_modder(pid, 1 << f.value - 1)
 	end
@@ -21962,49 +22387,51 @@ menu.add_player_feature("» Log Script Events", "toggle", playerparents["» Mete
 		if player.is_player_valid(pid) then
 			local new_player_log_file = "" .. os.time() .. "r" .. math.random(1, 10000) .. " - " .. player.get_player_scid(pid) .. " - " .. tostring(player.get_player_name(pid)) .. ""
 			text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\Logs\\ScriptEvents\\", "") .. "\\" .. new_player_log_file .. ".log", "a"), "")
-			eventhooks["» Log Script Events " .. pid] = hook.register_script_event_hook(function(source, target, params, count)
-				if source == pid then
-					for i = 1, #params do
-						params[i] = params[i] & 0xFFFFFFFF
-					end
-					local params_string = ""
-					local os_year = os.date("*t").year
-					if os_year < 10 then
-						os_year = "0" .. os_year .. ""
-					end
-					local os_month = os.date("*t").month
-					if os_month < 10 then
-						os_month = "0" .. os_month .. ""
-					end
-					local os_day = os.date("*t").day
-					if os_day < 10 then
-						os_day = "0" .. os_day .. ""
-					end
-					local os_hour = os.date("*t").hour
-					if os_hour < 10 then
-						os_hour = "0" .. os_hour .. ""
-					end
-					local os_min = os.date("*t").min
-					if os_min < 10 then
-						os_min = "0" .. os_min .. ""
-					end
-					local os_sec = os.date("*t").sec
-					if os_sec < 10 then
-						os_sec = "0" .. os_sec .. ""
-					end
-					local time_prefix = "" .. os_year .. "-" .. os_month .. "-" .. os_day .. " " .. os_hour .. ":" .. os_min .. ":" .. os_sec .. ""
-					for i = 1, #params do
-						if params[i] ~= nil then
-							local param_real = i - 1
-							if param_real < 10 then
-								param_real = "0" .. param_real .. ""
-							end
-							params_string = params_string .. "[" .. time_prefix .. "] p[" .. param_real .. "]: 0x" .. string.format("%0x", params[i]) .. " " .. params[i] .. "\n"
+			if eventhooks["» Log Script Events " .. pid] == nil then
+				eventhooks["» Log Script Events " .. pid] = hook.register_script_event_hook(function(source, target, params, count)
+					if source == pid then
+						for i = 1, #params do
+							params[i] = params[i] & 0xFFFFFFFF
 						end
+						local params_string = ""
+						local os_year = os.date("*t").year
+						if os_year < 10 then
+							os_year = "0" .. os_year .. ""
+						end
+						local os_month = os.date("*t").month
+						if os_month < 10 then
+							os_month = "0" .. os_month .. ""
+						end
+						local os_day = os.date("*t").day
+						if os_day < 10 then
+							os_day = "0" .. os_day .. ""
+						end
+						local os_hour = os.date("*t").hour
+						if os_hour < 10 then
+							os_hour = "0" .. os_hour .. ""
+						end
+						local os_min = os.date("*t").min
+						if os_min < 10 then
+							os_min = "0" .. os_min .. ""
+						end
+						local os_sec = os.date("*t").sec
+						if os_sec < 10 then
+							os_sec = "0" .. os_sec .. ""
+						end
+						local time_prefix = "" .. os_year .. "-" .. os_month .. "-" .. os_day .. " " .. os_hour .. ":" .. os_min .. ":" .. os_sec .. ""
+						for i = 1, #params do
+							if params[i] ~= nil then
+								local param_real = i - 1
+								if param_real < 10 then
+									param_real = "0" .. param_real .. ""
+								end
+								params_string = params_string .. "[" .. time_prefix .. "] p[" .. param_real .. "]: 0x" .. string.format("%0x", params[i]) .. " " .. params[i] .. "\n"
+							end
+						end
+						text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\Logs\\ScriptEvents\\", "") .. "\\" .. new_player_log_file .. ".log", "a"), "[" .. time_prefix .. "] Script event by player " .. tostring(player.get_player_name(source)) .. " " .. player.get_player_scid(source) .. " / " .. player.get_player_scid(source) .. "\n" .. params_string)
 					end
-					text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\Logs\\ScriptEvents\\", "") .. "\\" .. new_player_log_file .. ".log", "a"), "[" .. time_prefix .. "] Script event by player " .. tostring(player.get_player_name(source)) .. " " .. player.get_player_scid(source) .. " / " .. player.get_player_scid(source) .. "\n" .. params_string)
-				end
-			end)
+				end)
+			end
 		end
 	end
 	if not f.on then
@@ -22020,37 +22447,39 @@ menu.add_player_feature("» Log Net Events", "toggle", playerparents["» Meteor"
 		if player.is_player_valid(pid) then
 			local new_player_log_file = "" .. os.time() .. "r" .. math.random(1, 10000) .. " - " .. player.get_player_scid(pid) .. " - " .. tostring(player.get_player_name(pid)) .. ""
 			text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\Meteor\\MeteorConfig\\NetEvents\\", "") .. "\\" .. new_player_log_file .. ".log", "a"), "")
-			eventhooks["» Log Net Events " .. pid] = hook.register_net_event_hook(function(source, target, eventId)
-				if source == pid then
-					local params_string = ""
-					local os_year = os.date("*t").year
-					if os_year < 10 then
-						os_year = "0" .. os_year .. ""
+			if eventhooks["» Log Net Events " .. pid] == nil then
+				eventhooks["» Log Net Events " .. pid] = hook.register_net_event_hook(function(source, target, eventId)
+					if source == pid then
+						local params_string = ""
+						local os_year = os.date("*t").year
+						if os_year < 10 then
+							os_year = "0" .. os_year .. ""
+						end
+						local os_month = os.date("*t").month
+						if os_month < 10 then
+							os_month = "0" .. os_month .. ""
+						end
+						local os_day = os.date("*t").day
+						if os_day < 10 then
+							os_day = "0" .. os_day .. ""
+						end
+						local os_hour = os.date("*t").hour
+						if os_hour < 10 then
+							os_hour = "0" .. os_hour .. ""
+						end
+						local os_min = os.date("*t").min
+						if os_min < 10 then
+							os_min = "0" .. os_min .. ""
+						end
+						local os_sec = os.date("*t").sec
+						if os_sec < 10 then
+							os_sec = "0" .. os_sec .. ""
+						end
+						local time_prefix = "" .. os_year .. "-" .. os_month .. "-" .. os_day .. " " .. os_hour .. ":" .. os_min .. ":" .. os_sec .. ""
+						text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\Logs\\NetEvents\\", "") .. "\\" .. new_player_log_file .. ".log", "a"), "[" .. time_prefix .. "] Net event " .. eventId .. " by player " .. tostring(player.get_player_name(source)) .. " " .. player.get_player_scid(source) .. " / " .. player.get_player_scid(source) .. "\n")
 					end
-					local os_month = os.date("*t").month
-					if os_month < 10 then
-						os_month = "0" .. os_month .. ""
-					end
-					local os_day = os.date("*t").day
-					if os_day < 10 then
-						os_day = "0" .. os_day .. ""
-					end
-					local os_hour = os.date("*t").hour
-					if os_hour < 10 then
-						os_hour = "0" .. os_hour .. ""
-					end
-					local os_min = os.date("*t").min
-					if os_min < 10 then
-						os_min = "0" .. os_min .. ""
-					end
-					local os_sec = os.date("*t").sec
-					if os_sec < 10 then
-						os_sec = "0" .. os_sec .. ""
-					end
-					local time_prefix = "" .. os_year .. "-" .. os_month .. "-" .. os_day .. " " .. os_hour .. ":" .. os_min .. ":" .. os_sec .. ""
-					text_func.write(io.open(utils.get_appdata_path("PopstarDevs\\2Take1Menu\\scripts\\MeteorConfig\\Logs\\NetEvents\\", "") .. "\\" .. new_player_log_file .. ".log", "a"), "[" .. time_prefix .. "] Net event " .. eventId .. " by player " .. tostring(player.get_player_name(source)) .. " " .. player.get_player_scid(source) .. " / " .. player.get_player_scid(source) .. "\n")
-				end
-			end)
+				end)
+			end
 		end
 	end
 	if not f.on then
@@ -22100,692 +22529,699 @@ menu.add_player_feature("» Add To Spoofer Profiles", "action", playerparents["�
 	end
 end)
 
-listeners["Menu Unload"] = event.add_event_listener("exit", function()
-	if settings["» Downgrade To Standard"].Enabled then
-		for i = 1, #DataMain.all_vip_features do
-			if menu.get_feature_by_hierarchy_key(DataMain.all_vip_features[i]) then
-				menu.get_feature_by_hierarchy_key(DataMain.all_vip_features[i]).hidden = f.on
+if listeners["Menu Unload"] == nil then
+	listeners["Menu Unload"] = event.add_event_listener("exit", function()
+		if settings["» Downgrade To Standard"].Enabled then
+			for i = 1, #DataMain.all_vip_features do
+				if menu.get_feature_by_hierarchy_key(DataMain.all_vip_features[i]) then
+					menu.get_feature_by_hierarchy_key(DataMain.all_vip_features[i]).hidden = f.on
+				end
 			end
 		end
-	end
-	if ptfxs["» Dragon Breath"] then
-		graphics.remove_particle_fx(ptfxs["» Dragon Breath"], true)
-		ptfxs["» Dragon Breath"] = nil
-	end
-	if meteor_entities["» Dragon Breath"] then
-		utilities.clear_ptfx(meteor_entities["» Dragon Breath"])
-		meteor_entities["» Dragon Breath"] = nil
-	end
-	graphics.remove_named_ptfx_asset("weap_xs_vehicle_weapons")
-	if ptfxs["» Fire Wings 1"] then
-		graphics.remove_particle_fx(ptfxs["» Fire Wings 1"], true)
-		ptfxs["» Fire Wings 1"] = nil
-		utilities.clear_ptfx(meteor_entities["» Fire Wings 1"])
-		meteor_entities["» Fire Wings 1"] = nil
-	end
-	if ptfxs["» Fire Wings 2"] then
-		graphics.remove_particle_fx(ptfxs["» Fire Wings 2"], true)
-		ptfxs["» Fire Wings 2"] = nil
-		utilities.clear_ptfx(meteor_entities["» Fire Wings 2"])
-		meteor_entities["» Fire Wings 2"] = nil
-	end
-	if ptfxs["» Fire Wings 3"] then
-		graphics.remove_particle_fx(ptfxs["» Fire Wings 3"], true)
-		ptfxs["» Fire Wings 3"] = nil
-		utilities.clear_ptfx(meteor_entities["» Fire Wings 3"])
-		meteor_entities["» Fire Wings 3"] = nil
-	end
-	if ptfxs["» Fire Wings 4"] then
-		graphics.remove_particle_fx(ptfxs["» Fire Wings 4"], true)
-		ptfxs["» Fire Wings 4"] = nil
-		utilities.clear_ptfx(meteor_entities["» Fire Wings 4"])
-		meteor_entities["» Fire Wings 4"] = nil
-	end
-	if ptfxs["» Fire Wings 5"] then
-		graphics.remove_particle_fx(ptfxs["» Fire Wings 5"], true)
-		ptfxs["» Fire Wings 5"] = nil
-		utilities.clear_ptfx(meteor_entities["» Fire Wings 5"])
-		meteor_entities["» Fire Wings 5"] = nil
-	end
-	if ptfxs["» Fire Wings 6"] then
-		graphics.remove_particle_fx(ptfxs["» Fire Wings 6"], true)
-		ptfxs["» Fire Wings 6"] = nil
-		utilities.clear_ptfx(meteor_entities["» Fire Wings 6"])
-		meteor_entities["» Fire Wings 6"] = nil
-	end
-	if ptfxs["» Fire Wings 7"] then
-		graphics.remove_particle_fx(ptfxs["» Fire Wings 7"], true)
-		ptfxs["» Fire Wings 7"] = nil
-		utilities.clear_ptfx(meteor_entities["» Fire Wings 7"])
-		meteor_entities["» Fire Wings 7"] = nil
-	end
-	if ptfxs["» Fire Wings 8"] then
-		graphics.remove_particle_fx(ptfxs["» Fire Wings 8"], true)
-		ptfxs["» Fire Wings 8"] = nil
-		utilities.clear_ptfx(meteor_entities["» Fire Wings 8"])
-		meteor_entities["» Fire Wings 8"] = nil
-	end
-	if threads["» Fire Wings 1"] then
-		menu.delete_thread(threads["» Fire Wings 1"])
-	end
-	if threads["» Fire Wings 2"] then
-		menu.delete_thread(threads["» Fire Wings 2"])
-	end
-	if threads["» Fire Wings 3"] then
-		menu.delete_thread(threads["» Fire Wings 3"])
-	end
-	if threads["» Fire Wings 4"] then
-		menu.delete_thread(threads["» Fire Wings 4"])
-	end
-	if threads["» Fire Wings 5"] then
-		menu.delete_thread(threads["» Fire Wings 5"])
-	end
-	if threads["» Fire Wings 6"] then
-		menu.delete_thread(threads["» Fire Wings 6"])
-	end
-	if threads["» Fire Wings 7"] then
-		menu.delete_thread(threads["» Fire Wings 7"])
-	end
-	if threads["» Fire Wings 8"] then
-		menu.delete_thread(threads["» Fire Wings 8"])
-	end
-	if ptfxs["» Make Area Foggy 1"] then
-		utilities.clear_ptfx(meteor_entities["» Make Area Foggy 1"])
-		meteor_entities["» Make Area Foggy 1"] = nil
-		utilities.clear_ptfx(meteor_entities["» Make Area Foggy 2"])
-		meteor_entities["» Make Area Foggy 2"] = nil
-		utilities.clear_ptfx(meteor_entities["» Make Area Foggy 3"])
-		meteor_entities["» Make Area Foggy 3"] = nil
-		utilities.clear_ptfx(meteor_entities["» Make Area Foggy 4"])
-		meteor_entities["» Make Area Foggy 4"] = nil
-		utilities.clear_ptfx(meteor_entities["» Make Area Foggy 5"])
-		meteor_entities["» Make Area Foggy 5"] = nil
-		utilities.clear_ptfx(meteor_entities["» Make Area Foggy 6"])
-		meteor_entities["» Make Area Foggy 6"] = nil
-		ptfxs["» Make Area Foggy 1"] = nil
-		ptfxs["» Make Area Foggy 2"] = nil
-		ptfxs["» Make Area Foggy 3"] = nil
-		ptfxs["» Make Area Foggy 4"] = nil
-		ptfxs["» Make Area Foggy 5"] = nil
-		ptfxs["» Make Area Foggy 6"] = nil
-		graphics.remove_named_ptfx_asset("core")
-	end
-	if threads["» Altered Script Host Migration"] then
-		menu.delete_thread(threads["» Altered Script Host Migration"])
-	end
-	if threads["» Bad World Data"] then
-		menu.delete_thread(threads["» Bad World Data"])
-	end
-	if threads["» Script Execute"] then
-		menu.delete_thread(threads["» Script Execute"])
-	end
-	graphics.remove_named_ptfx_asset("weap_xs_vehicle_weapons")
-	if ptfxs["» Sparks 1"] then
-		graphics.remove_particle_fx(ptfxs["» Sparks 1"], true)
-		ptfxs["» Sparks 1"] = nil
-		utilities.clear_ptfx(ptfxs["» Sparks 1"])
-		ptfxs["» Sparks 1"] = nil
-		graphics.remove_particle_fx(ptfxs["» Sparks 2"], true)
-		ptfxs["» Sparks 2"] = nil
-		utilities.clear_ptfx(ptfxs["» Sparks 2"])
-		ptfxs["» Sparks 2"] = nil
-		graphics.remove_particle_fx(meteor_entities["» Sparks 1"], true)
-		meteor_entities["» Sparks 1"] = nil
-		utilities.clear_ptfx(meteor_entities["» Sparks 1"])
-		meteor_entities["» Sparks 1"] = nil
-		graphics.remove_particle_fx(meteor_entities["» Sparks 2"], true)
-		meteor_entities["» Sparks 2"] = nil
-		utilities.clear_ptfx(meteor_entities["» Sparks 2"])
-		meteor_entities["» Sparks 2"] = nil
+		if ptfxs["» Dragon Breath"] then
+			graphics.remove_particle_fx(ptfxs["» Dragon Breath"], true)
+			ptfxs["» Dragon Breath"] = nil
+		end
+		if meteor_entities["» Dragon Breath"] then
+			utilities.clear_ptfx(meteor_entities["» Dragon Breath"])
+			meteor_entities["» Dragon Breath"] = nil
+		end
+		graphics.remove_named_ptfx_asset("weap_xs_vehicle_weapons")
+		if ptfxs["» Fire Wings 1"] then
+			graphics.remove_particle_fx(ptfxs["» Fire Wings 1"], true)
+			ptfxs["» Fire Wings 1"] = nil
+			utilities.clear_ptfx(meteor_entities["» Fire Wings 1"])
+			meteor_entities["» Fire Wings 1"] = nil
+		end
+		if ptfxs["» Fire Wings 2"] then
+			graphics.remove_particle_fx(ptfxs["» Fire Wings 2"], true)
+			ptfxs["» Fire Wings 2"] = nil
+			utilities.clear_ptfx(meteor_entities["» Fire Wings 2"])
+			meteor_entities["» Fire Wings 2"] = nil
+		end
+		if ptfxs["» Fire Wings 3"] then
+			graphics.remove_particle_fx(ptfxs["» Fire Wings 3"], true)
+			ptfxs["» Fire Wings 3"] = nil
+			utilities.clear_ptfx(meteor_entities["» Fire Wings 3"])
+			meteor_entities["» Fire Wings 3"] = nil
+		end
+		if ptfxs["» Fire Wings 4"] then
+			graphics.remove_particle_fx(ptfxs["» Fire Wings 4"], true)
+			ptfxs["» Fire Wings 4"] = nil
+			utilities.clear_ptfx(meteor_entities["» Fire Wings 4"])
+			meteor_entities["» Fire Wings 4"] = nil
+		end
+		if ptfxs["» Fire Wings 5"] then
+			graphics.remove_particle_fx(ptfxs["» Fire Wings 5"], true)
+			ptfxs["» Fire Wings 5"] = nil
+			utilities.clear_ptfx(meteor_entities["» Fire Wings 5"])
+			meteor_entities["» Fire Wings 5"] = nil
+		end
+		if ptfxs["» Fire Wings 6"] then
+			graphics.remove_particle_fx(ptfxs["» Fire Wings 6"], true)
+			ptfxs["» Fire Wings 6"] = nil
+			utilities.clear_ptfx(meteor_entities["» Fire Wings 6"])
+			meteor_entities["» Fire Wings 6"] = nil
+		end
+		if ptfxs["» Fire Wings 7"] then
+			graphics.remove_particle_fx(ptfxs["» Fire Wings 7"], true)
+			ptfxs["» Fire Wings 7"] = nil
+			utilities.clear_ptfx(meteor_entities["» Fire Wings 7"])
+			meteor_entities["» Fire Wings 7"] = nil
+		end
+		if ptfxs["» Fire Wings 8"] then
+			graphics.remove_particle_fx(ptfxs["» Fire Wings 8"], true)
+			ptfxs["» Fire Wings 8"] = nil
+			utilities.clear_ptfx(meteor_entities["» Fire Wings 8"])
+			meteor_entities["» Fire Wings 8"] = nil
+		end
+		if threads["» Fire Wings 1"] then
+			menu.delete_thread(threads["» Fire Wings 1"])
+		end
+		if threads["» Fire Wings 2"] then
+			menu.delete_thread(threads["» Fire Wings 2"])
+		end
+		if threads["» Fire Wings 3"] then
+			menu.delete_thread(threads["» Fire Wings 3"])
+		end
+		if threads["» Fire Wings 4"] then
+			menu.delete_thread(threads["» Fire Wings 4"])
+		end
+		if threads["» Fire Wings 5"] then
+			menu.delete_thread(threads["» Fire Wings 5"])
+		end
+		if threads["» Fire Wings 6"] then
+			menu.delete_thread(threads["» Fire Wings 6"])
+		end
+		if threads["» Fire Wings 7"] then
+			menu.delete_thread(threads["» Fire Wings 7"])
+		end
+		if threads["» Fire Wings 8"] then
+			menu.delete_thread(threads["» Fire Wings 8"])
+		end
+		if ptfxs["» Make Area Foggy 1"] then
+			utilities.clear_ptfx(meteor_entities["» Make Area Foggy 1"])
+			meteor_entities["» Make Area Foggy 1"] = nil
+			utilities.clear_ptfx(meteor_entities["» Make Area Foggy 2"])
+			meteor_entities["» Make Area Foggy 2"] = nil
+			utilities.clear_ptfx(meteor_entities["» Make Area Foggy 3"])
+			meteor_entities["» Make Area Foggy 3"] = nil
+			utilities.clear_ptfx(meteor_entities["» Make Area Foggy 4"])
+			meteor_entities["» Make Area Foggy 4"] = nil
+			utilities.clear_ptfx(meteor_entities["» Make Area Foggy 5"])
+			meteor_entities["» Make Area Foggy 5"] = nil
+			utilities.clear_ptfx(meteor_entities["» Make Area Foggy 6"])
+			meteor_entities["» Make Area Foggy 6"] = nil
+			ptfxs["» Make Area Foggy 1"] = nil
+			ptfxs["» Make Area Foggy 2"] = nil
+			ptfxs["» Make Area Foggy 3"] = nil
+			ptfxs["» Make Area Foggy 4"] = nil
+			ptfxs["» Make Area Foggy 5"] = nil
+			ptfxs["» Make Area Foggy 6"] = nil
+			graphics.remove_named_ptfx_asset("core")
+		end
+		if threads["» Altered Script Host Migration"] then
+			menu.delete_thread(threads["» Altered Script Host Migration"])
+		end
+		if threads["» Bad World Data"] then
+			menu.delete_thread(threads["» Bad World Data"])
+		end
+		if threads["» Script Execute"] then
+			menu.delete_thread(threads["» Script Execute"])
+		end
+		graphics.remove_named_ptfx_asset("weap_xs_vehicle_weapons")
+		if ptfxs["» Sparks 1"] then
+			graphics.remove_particle_fx(ptfxs["» Sparks 1"], true)
+			ptfxs["» Sparks 1"] = nil
+			utilities.clear_ptfx(ptfxs["» Sparks 1"])
+			ptfxs["» Sparks 1"] = nil
+			graphics.remove_particle_fx(ptfxs["» Sparks 2"], true)
+			ptfxs["» Sparks 2"] = nil
+			utilities.clear_ptfx(ptfxs["» Sparks 2"])
+			ptfxs["» Sparks 2"] = nil
+			graphics.remove_particle_fx(meteor_entities["» Sparks 1"], true)
+			meteor_entities["» Sparks 1"] = nil
+			utilities.clear_ptfx(meteor_entities["» Sparks 1"])
+			meteor_entities["» Sparks 1"] = nil
+			graphics.remove_particle_fx(meteor_entities["» Sparks 2"], true)
+			meteor_entities["» Sparks 2"] = nil
+			utilities.clear_ptfx(meteor_entities["» Sparks 2"])
+			meteor_entities["» Sparks 2"] = nil
+			graphics.remove_named_ptfx_asset("scr_reconstructionaccident")
+		end
+		if ptfxs["» Flames 1"] then
+			graphics.remove_particle_fx(ptfxs["» Flames 1"], true)
+			ptfxs["» Flames 1"] = nil
+			utilities.clear_ptfx(ptfxs["» Flames 1"])
+			ptfxs["» Flames 1"] = nil
+			graphics.remove_particle_fx(ptfxs["» Flames 2"], true)
+			ptfxs["» Flames 2"] = nil
+			utilities.clear_ptfx(ptfxs["» Flames 2"])
+			ptfxs["» Flames 2"] = nil
+			graphics.remove_particle_fx(meteor_entities["» Flames 1"], true)
+			meteor_entities["» Flames 1"] = nil
+			utilities.clear_ptfx(meteor_entities["» Flames 1"])
+			meteor_entities["» Flames 1"] = nil
+			graphics.remove_particle_fx(meteor_entities["» Flames 2"], true)
+			meteor_entities["» Flames 2"] = nil
+			utilities.clear_ptfx(meteor_entities["» Flames 2"])
+			meteor_entities["» Flames 2"] = nil
+			graphics.remove_named_ptfx_asset("core")
+		end
+		if ptfxs["» Flamethrower"] then
+			graphics.remove_particle_fx(ptfxs["» Flamethrower"], true)
+			ptfxs["» Flamethrower"] = nil
+			utilities.clear_ptfx(meteor_entities["» Flamethrower"])
+			meteor_entities["» Flamethrower"] = nil
+		end
+		if meteor_entities["» Flamethrower"] then
+			graphics.remove_particle_fx(ptfxs["» Flamethrower"], true)
+			ptfxs["» Flamethrower"] = nil
+			utilities.clear_ptfx(meteor_entities["» Flamethrower"])
+			meteor_entities["» Flamethrower"] = nil
+		end
+		if eventhooks["» Main Script Event Hook"] then
+			hook.remove_script_event_hook(eventhooks["» Main Script Event Hook"])
+			eventhooks["» Main Script Event Hook"] = nil
+		end
+		if eventhooks["» Main Net Event Hook"] then
+			hook.remove_net_event_hook(eventhooks["» Main Net Event Hook"])
+			eventhooks["» Main Net Event Hook"] = nil
+		end
+		if eventhooks["» Bad Net Event Detection"] then
+			hook.remove_net_event_hook(eventhooks["» Bad Net Event Detection"])
+			eventhooks["» Bad Net Event Detection"] = nil
+		end
+		if eventhooks["» Bad Script Event Detection"] then
+			hook.remove_script_event_hook(eventhooks["» Bad Script Event Detection"])
+			eventhooks["» Bad Script Event Detection"] = nil
+		end
+		if eventhooks["» Stand User Detection"] then
+			hook.remove_script_event_hook(eventhooks["» Stand User Detection"])
+			eventhooks["» Stand User Detection"] = nil
+		end
+		if eventhooks["» Notify Typing Players"] then
+			hook.remove_script_event_hook(eventhooks["» Notify Typing Players"])
+			eventhooks["» Notify Typing Players"] = nil
+		end
+		for i = 0, 87 do
+			if eventhooks["» Net Event Responses " .. i] then
+				hook.remove_net_event_hook(eventhooks["» Net Event Responses " .. i])
+				eventhooks["» Net Event Responses " .. i] = nil
+			end
+		end
+		if eventhooks["» Notify Orbital Cannon Room Events"] then
+			hook.remove_net_event_hook(eventhooks["» Notify Orbital Cannon Room Events"])
+			eventhooks["» Notify Orbital Cannon Room Events"] = nil
+		end
+		if eventhooks["» Anti Down Syndrome"] then
+			hook.remove_net_event_hook(eventhooks["» Anti Down Syndrome"])
+			eventhooks["» Anti Down Syndrome"] = nil
+		end
+		if eventhooks["» Guided Missile Tracker"] then
+			hook.remove_script_event_hook(eventhooks["» Guided Missile Tracker"])
+			eventhooks["» Guided Missile Tracker"] = nil
+		end
+		if eventhooks["» Uh Oh Spaghetti O's"] then
+			hook.remove_script_event_hook(eventhooks["» Uh Oh Spaghetti O's"])
+			eventhooks["» Uh Oh Spaghetti O's"] = nil
+		end
+		if eventhooks["» Modded Explosion Detection"] then
+			hook.remove_script_event_hook(eventhooks["» Modded Explosion Detection"])
+			eventhooks["» Modded Explosion Detection"] = nil
+		end
+		if listeners["» Auto Kick All Modders"] then
+			event.remove_event_listener("modder", listeners["» Auto Kick All Modders"])
+			listeners["» Auto Kick All Modders"] = nil
+		end
+		for i = 0, 75 do
+			if listeners["» Auto Kick Modder " .. i] then
+				event.remove_event_listener("modder", listeners["» Auto Kick Modder " .. i])
+				listeners["» Auto Kick Modder " .. i] = nil
+			end
+		end
+		if listeners["» Main Player Leave Event Listener"] then
+			event.remove_event_listener("player_leave", listeners["» Main Player Leave Event Listener"])
+			listeners["» Main Player Leave Event Listener"] = nil
+		end
+		if listeners["» Main Player Join Event Listener"] then
+			event.remove_event_listener("player_join", listeners["» Main Player Join Event Listener"])
+			listeners["» Main Player Join Event Listener"] = nil
+		end
+		if listeners["» Anti Chat Spam"] then
+			event.remove_event_listener("chat", listeners["» Anti Chat Spam"])
+			listeners["» Anti Chat Spam"] = nil
+		end
+		if listeners["» Anti Ur Mom"] then
+			event.remove_event_listener("chat", listeners["» Anti Ur Mom"])
+			listeners["» Anti Ur Mom"] = nil
+		end
+		if listeners["» Log Session Chat"] then
+			event.remove_event_listener("chat", listeners["» Log Session Chat"])
+			listeners["» Log Session Chat"] = nil
+		end
+		if listeners["» Log Session Change Leave"] then
+			event.remove_event_listener("player_leave", listeners["» Log Session Change Leave"])
+			listeners["» Log Session Change Leave"] = nil
+		end
+		if listeners["» Log Session Change Join"] then
+			event.remove_event_listener("player_join", listeners["» Log Session Change Join"])
+			listeners["» Log Session Change Join"] = nil
+		end
+		if listeners["» Notify Sent Messages"] then
+			event.remove_event_listener("chat", listeners["» Notify Sent Messages"])
+			listeners["» Notify Sent Messages"] = nil
+		end
+		if listeners["» Translate Chat Messages"] then
+			event.remove_event_listener("chat", listeners["» Translate Chat Messages"])
+			listeners["» Translate Chat Messages"] = nil
+		end
+		if listeners["» Anti East Ukraine"] then
+			event.remove_event_listener("chat", listeners["» Anti East Ukraine"])
+			listeners["» Anti East Ukraine"] = nil
+		end
+		if listeners["» Anti West Taiwan"] then
+			event.remove_event_listener("chat", listeners["» Anti West Taiwan"])
+			listeners["» Anti West Taiwan"] = nil
+		end
+		if listeners["» Uwu-Ify Chat Messages"] then
+			event.remove_event_listener("chat", listeners["» Uwu-Ify Chat Messages"])
+			listeners["» Uwu-Ify Chat Messages"] = nil
+		end
+		if listeners["» Vpn/Proxy Player Check"] then
+			event.remove_event_listener("player_join", listeners["» Vpn/Proxy Player Check"])
+			listeners["» Vpn/Proxy Player Check"] = nil
+		end
+		if listeners["» Chat Command veh <model> <max> <god>"] then
+			event.remove_event_listener("chat", listeners["» Chat Command veh <model> <max> <god>"])
+			listeners["» Chat Command veh <model> <max> <god>"] = nil
+		end
+		if listeners["» Chat Command crash <name>"] then
+			event.remove_event_listener("chat", listeners["» Chat Command crash <name>"])
+			listeners["» Chat Command crash <name>"] = nil
+		end
+		if listeners["» Chat Command kick <name>"] then
+			event.remove_event_listener("chat", listeners["» Chat Command kick <name>"])
+			listeners["» Chat Command kick <name>"] = nil
+		end
+		if listeners["» Chat Command bounty <name> <amount>"] then
+			event.remove_event_listener("chat", listeners["» Chat Command bounty <name> <amount>"])
+			listeners["» Chat Command bounty <name> <amount>"] = nil
+		end
+		if listeners["» Chat Command perico <name>"] then
+			event.remove_event_listener("chat", listeners["» Chat Command perico <name>"])
+			listeners["» Chat Command perico <name>"] = nil
+		end
+		if listeners["» Chat Command otr <name>"] then
+			event.remove_event_listener("chat", listeners["» Chat Command otr <name>"])
+			listeners["» Chat Command otr <name>"] = nil
+		end
+		streaming.remove_anim_dict("mp_am_hold_up")
+		streaming.remove_anim_set("handsup_base")
+		streaming.remove_anim_dict("random@arrests@busted")
+		streaming.remove_anim_set("idle_c")
+		streaming.remove_anim_dict("random@arrests")
+		streaming.remove_anim_set("kneeling_arrest_idle")
+		graphics.remove_named_ptfx_asset("weap_xs_vehicle_weapons")
 		graphics.remove_named_ptfx_asset("scr_reconstructionaccident")
-	end
-	if ptfxs["» Flames 1"] then
-		graphics.remove_particle_fx(ptfxs["» Flames 1"], true)
-		ptfxs["» Flames 1"] = nil
-		utilities.clear_ptfx(ptfxs["» Flames 1"])
-		ptfxs["» Flames 1"] = nil
-		graphics.remove_particle_fx(ptfxs["» Flames 2"], true)
-		ptfxs["» Flames 2"] = nil
-		utilities.clear_ptfx(ptfxs["» Flames 2"])
-		ptfxs["» Flames 2"] = nil
-		graphics.remove_particle_fx(meteor_entities["» Flames 1"], true)
-		meteor_entities["» Flames 1"] = nil
-		utilities.clear_ptfx(meteor_entities["» Flames 1"])
-		meteor_entities["» Flames 1"] = nil
-		graphics.remove_particle_fx(meteor_entities["» Flames 2"], true)
-		meteor_entities["» Flames 2"] = nil
-		utilities.clear_ptfx(meteor_entities["» Flames 2"])
-		meteor_entities["» Flames 2"] = nil
+		graphics.remove_named_ptfx_asset("scr_trevor1")
 		graphics.remove_named_ptfx_asset("core")
-	end
-	if ptfxs["» Flamethrower"] then
-		graphics.remove_particle_fx(ptfxs["» Flamethrower"], true)
-		ptfxs["» Flamethrower"] = nil
-		utilities.clear_ptfx(meteor_entities["» Flamethrower"])
-		meteor_entities["» Flamethrower"] = nil
-	end
-	if meteor_entities["» Flamethrower"] then
-		graphics.remove_particle_fx(ptfxs["» Flamethrower"], true)
-		ptfxs["» Flamethrower"] = nil
-		utilities.clear_ptfx(meteor_entities["» Flamethrower"])
-		meteor_entities["» Flamethrower"] = nil
-	end
-	if eventhooks["» Main Script Event Hook"] then
-		hook.remove_script_event_hook(eventhooks["» Main Script Event Hook"])
-		eventhooks["» Main Script Event Hook"] = nil
-	end
-	if eventhooks["» Main Net Event Hook"] then
-		hook.remove_net_event_hook(eventhooks["» Main Net Event Hook"])
-		eventhooks["» Main Net Event Hook"] = nil
-	end
-	if eventhooks["» Bad Net Event Detection"] then
-		hook.remove_net_event_hook(eventhooks["» Bad Net Event Detection"])
-		eventhooks["» Bad Net Event Detection"] = nil
-	end
-	if eventhooks["» Bad Script Event Detection"] then
-		hook.remove_script_event_hook(eventhooks["» Bad Script Event Detection"])
-		eventhooks["» Bad Script Event Detection"] = nil
-	end
-	if eventhooks["» Stand User Detection"] then
-		hook.remove_script_event_hook(eventhooks["» Stand User Detection"])
-		eventhooks["» Stand User Detection"] = nil
-	end
-	if eventhooks["» Notify Typing Players"] then
-		hook.remove_script_event_hook(eventhooks["» Notify Typing Players"])
-		eventhooks["» Notify Typing Players"] = nil
-	end
-	for i = 0, 87 do
-		if eventhooks["» Net Event Responses " .. i] then
-			hook.remove_net_event_hook(eventhooks["» Net Event Responses " .. i])
-			eventhooks["» Net Event Responses " .. i] = nil
+		graphics.remove_named_ptfx_asset("scr_agencyheistb")
+		graphics.remove_named_ptfx_asset("scr_rcbarry1")
+		graphics.remove_named_ptfx_asset("scr_recartheft")
+		streaming.set_model_as_no_longer_needed(0xE75B4B1C)
+		streaming.set_model_as_no_longer_needed(165154707)
+		streaming.set_model_as_no_longer_needed(970598228)
+		streaming.set_model_as_no_longer_needed(368211810)
+		streaming.set_model_as_no_longer_needed(0x616C97B9)
+		streaming.set_model_as_no_longer_needed(1058115860)
+		streaming.set_model_as_no_longer_needed(0x761E2AD3)
+		streaming.set_model_as_no_longer_needed(-150975354)
+		streaming.set_model_as_no_longer_needed(621481054)
+		streaming.set_model_as_no_longer_needed(0xD74B8139)
+		streaming.set_model_as_no_longer_needed(0x2EA68690)
+		streaming.set_model_as_no_longer_needed(0xA09E15FD)
+		streaming.set_model_as_no_longer_needed(0x7ED5AD78)
+		streaming.set_model_as_no_longer_needed(0xB5CF80E4)
+		streaming.set_model_as_no_longer_needed(0x90EF5134)
+		streaming.set_model_as_no_longer_needed(0x705E61F2)
+		streaming.set_model_as_no_longer_needed(193469166)
+		streaming.set_model_as_no_longer_needed(0x3F039CBA)
+		streaming.set_model_as_no_longer_needed(0x856CFB02)
+		streaming.set_model_as_no_longer_needed(0x2D7030F3)
+		streaming.set_model_as_no_longer_needed(0xE5A2D6C6)
+		streaming.set_model_as_no_longer_needed(0x82CAC433)
+		streaming.set_model_as_no_longer_needed(0xB12314E0)
+		streaming.set_model_as_no_longer_needed(0xAF10BD56)
+		streaming.set_model_as_no_longer_needed(0x9B810FA2)
+		streaming.set_model_as_no_longer_needed(0x72C0CAD2)
+		streaming.set_model_as_no_longer_needed(0xFE0A508C)
+		streaming.set_model_as_no_longer_needed(0x3DC92356)
+		streaming.set_model_as_no_longer_needed(0xC5DD6967)
+		streaming.set_model_as_no_longer_needed(3545667823)
+		streaming.set_model_as_no_longer_needed(1951415382)
+		if threads["» Shoot Fake Money Bags 1"] then
+			menu.delete_thread(threads["» Shoot Fake Money Bags 1"])
 		end
-	end
-	if eventhooks["» Notify Orbital Cannon Room Events"] then
-		hook.remove_net_event_hook(eventhooks["» Notify Orbital Cannon Room Events"])
-		eventhooks["» Notify Orbital Cannon Room Events"] = nil
-	end
-	if eventhooks["» Guided Missile Tracker"] then
-		hook.remove_script_event_hook(eventhooks["» Guided Missile Tracker"])
-		eventhooks["» Guided Missile Tracker"] = nil
-	end
-	if eventhooks["» Uh Oh Spaghetti O's"] then
-		hook.remove_script_event_hook(eventhooks["» Uh Oh Spaghetti O's"])
-		eventhooks["» Uh Oh Spaghetti O's"] = nil
-	end
-	if eventhooks["» Modded Explosion Detection"] then
-		hook.remove_script_event_hook(eventhooks["» Modded Explosion Detection"])
-		eventhooks["» Modded Explosion Detection"] = nil
-	end
-	if listeners["» Auto Kick All Modders"] then
-		event.remove_event_listener("modder", listeners["» Auto Kick All Modders"])
-		listeners["» Auto Kick All Modders"] = nil
-	end
-	for i = 0, 75 do
-		if listeners["» Auto Kick Modder " .. i] then
-			event.remove_event_listener("modder", listeners["» Auto Kick Modder " .. i])
-			listeners["» Auto Kick Modder " .. i] = nil
+		if threads["» Shoot Stones"] then
+			menu.delete_thread(threads["» Shoot Stones"])
 		end
-	end
-	if listeners["» Main Player Leave Event Listener"] then
-		event.remove_event_listener("player_leave", listeners["» Main Player Leave Event Listener"])
-		listeners["» Main Player Leave Event Listener"] = nil
-	end
-	if listeners["» Main Player Join Event Listener"] then
-		event.remove_event_listener("player_join", listeners["» Main Player Join Event Listener"])
-		listeners["» Main Player Join Event Listener"] = nil
-	end
-	if listeners["» Anti Chat Spam"] then
-		event.remove_event_listener("chat", listeners["» Anti Chat Spam"])
-		listeners["» Anti Chat Spam"] = nil
-	end
-	if listeners["» Anti Ur Mom"] then
-		event.remove_event_listener("chat", listeners["» Anti Ur Mom"])
-		listeners["» Anti Ur Mom"] = nil
-	end
-	if listeners["» Log Session Chat"] then
-		event.remove_event_listener("chat", listeners["» Log Session Chat"])
-		listeners["» Log Session Chat"] = nil
-	end
-	if listeners["» Log Session Change Leave"] then
-		event.remove_event_listener("player_leave", listeners["» Log Session Change Leave"])
-		listeners["» Log Session Change Leave"] = nil
-	end
-	if listeners["» Log Session Change Join"] then
-		event.remove_event_listener("player_join", listeners["» Log Session Change Join"])
-		listeners["» Log Session Change Join"] = nil
-	end
-	if listeners["» Notify Sent Messages"] then
-		event.remove_event_listener("chat", listeners["» Notify Sent Messages"])
-		listeners["» Notify Sent Messages"] = nil
-	end
-	if listeners["» Translate Chat Messages"] then
-		event.remove_event_listener("chat", listeners["» Translate Chat Messages"])
-		listeners["» Translate Chat Messages"] = nil
-	end
-	if listeners["» Anti East Ukraine"] then
-		event.remove_event_listener("chat", listeners["» Anti East Ukraine"])
-		listeners["» Anti East Ukraine"] = nil
-	end
-	if listeners["» Anti West Taiwan"] then
-		event.remove_event_listener("chat", listeners["» Anti West Taiwan"])
-		listeners["» Anti West Taiwan"] = nil
-	end
-	if listeners["» Uwu-Ify Chat Messages"] then
-		event.remove_event_listener("chat", listeners["» Uwu-Ify Chat Messages"])
-		listeners["» Uwu-Ify Chat Messages"] = nil
-	end
-	if listeners["» Vpn/Proxy Player Check"] then
-		event.remove_event_listener("player_join", listeners["» Vpn/Proxy Player Check"])
-		listeners["» Vpn/Proxy Player Check"] = nil
-	end
-	if listeners["» Chat Command veh <model> <max> <god>"] then
-		event.remove_event_listener("chat", listeners["» Chat Command veh <model> <max> <god>"])
-		listeners["» Chat Command veh <model> <max> <god>"] = nil
-	end
-	if listeners["» Chat Command crash <name>"] then
-		event.remove_event_listener("chat", listeners["» Chat Command crash <name>"])
-		listeners["» Chat Command crash <name>"] = nil
-	end
-	if listeners["» Chat Command kick <name>"] then
-		event.remove_event_listener("chat", listeners["» Chat Command kick <name>"])
-		listeners["» Chat Command kick <name>"] = nil
-	end
-	if listeners["» Chat Command bounty <name> <amount>"] then
-		event.remove_event_listener("chat", listeners["» Chat Command bounty <name> <amount>"])
-		listeners["» Chat Command bounty <name> <amount>"] = nil
-	end
-	if listeners["» Chat Command perico <name>"] then
-		event.remove_event_listener("chat", listeners["» Chat Command perico <name>"])
-		listeners["» Chat Command perico <name>"] = nil
-	end
-	if listeners["» Chat Command otr <name>"] then
-		event.remove_event_listener("chat", listeners["» Chat Command otr <name>"])
-		listeners["» Chat Command otr <name>"] = nil
-	end
-	streaming.remove_anim_dict("mp_am_hold_up")
-	streaming.remove_anim_set("handsup_base")
-	streaming.remove_anim_dict("random@arrests@busted")
-	streaming.remove_anim_set("idle_c")
-	streaming.remove_anim_dict("random@arrests")
-	streaming.remove_anim_set("kneeling_arrest_idle")
-	graphics.remove_named_ptfx_asset("weap_xs_vehicle_weapons")
-	graphics.remove_named_ptfx_asset("scr_reconstructionaccident")
-	graphics.remove_named_ptfx_asset("scr_trevor1")
-	graphics.remove_named_ptfx_asset("core")
-	graphics.remove_named_ptfx_asset("scr_agencyheistb")
-	graphics.remove_named_ptfx_asset("scr_rcbarry1")
-	graphics.remove_named_ptfx_asset("scr_recartheft")
-	streaming.set_model_as_no_longer_needed(0xE75B4B1C)
-	streaming.set_model_as_no_longer_needed(165154707)
-	streaming.set_model_as_no_longer_needed(970598228)
-	streaming.set_model_as_no_longer_needed(368211810)
-	streaming.set_model_as_no_longer_needed(0x616C97B9)
-	streaming.set_model_as_no_longer_needed(1058115860)
-	streaming.set_model_as_no_longer_needed(0x761E2AD3)
-	streaming.set_model_as_no_longer_needed(-150975354)
-	streaming.set_model_as_no_longer_needed(621481054)
-	streaming.set_model_as_no_longer_needed(0xD74B8139)
-	streaming.set_model_as_no_longer_needed(0x2EA68690)
-	streaming.set_model_as_no_longer_needed(0xA09E15FD)
-	streaming.set_model_as_no_longer_needed(0x7ED5AD78)
-	streaming.set_model_as_no_longer_needed(0xB5CF80E4)
-	streaming.set_model_as_no_longer_needed(0x90EF5134)
-	streaming.set_model_as_no_longer_needed(0x705E61F2)
-	streaming.set_model_as_no_longer_needed(193469166)
-	streaming.set_model_as_no_longer_needed(0x3F039CBA)
-	streaming.set_model_as_no_longer_needed(0x856CFB02)
-	streaming.set_model_as_no_longer_needed(0x2D7030F3)
-	streaming.set_model_as_no_longer_needed(0xE5A2D6C6)
-	streaming.set_model_as_no_longer_needed(0x82CAC433)
-	streaming.set_model_as_no_longer_needed(0xB12314E0)
-	streaming.set_model_as_no_longer_needed(0xAF10BD56)
-	streaming.set_model_as_no_longer_needed(0x9B810FA2)
-	streaming.set_model_as_no_longer_needed(0x72C0CAD2)
-	streaming.set_model_as_no_longer_needed(0xFE0A508C)
-	streaming.set_model_as_no_longer_needed(0x3DC92356)
-	streaming.set_model_as_no_longer_needed(0xC5DD6967)
-	streaming.set_model_as_no_longer_needed(3545667823)
-	streaming.set_model_as_no_longer_needed(1951415382)
-	if threads["» Shoot Fake Money Bags 1"] then
-		menu.delete_thread(threads["» Shoot Fake Money Bags 1"])
-	end
-	if threads["» Shoot Stones"] then
-		menu.delete_thread(threads["» Shoot Stones"])
-	end
-	if threads["» Shoot Dogshit"] then
-		menu.delete_thread(threads["» Shoot Dogshit"])
-	end
-	if threads["» Fake Money Bag Drop"] then
-		menu.delete_thread(threads["» Fake Money Bag Drop"])
-	end
-	if threads["» Drop Fake Money Bag 2"] then
-		menu.delete_thread(threads["» Drop Fake Money Bag 2"])
-	end
-	if threads["» Drop Fake Money Bag 1"] then
-		menu.delete_thread(threads["» Drop Fake Money Bag 1"])
-	end
-	if threads["» Fake RP Drop"] then
-		menu.delete_thread(threads["» Fake RP Drop"])
-	end
-	if threads["» Drop Fake RP 2"] then
-		menu.delete_thread(threads["» Drop Fake RP 2"])
-	end
-	if threads["» Drop Fake RP 1"] then
-		menu.delete_thread(threads["» Drop Fake RP 1"])
-	end
-	if threads["» Fake Health Drop"] then
-		menu.delete_thread(threads["» Fake Health Drop"])
-	end
-	if threads["» Drop Fake Health 2"] then
-		menu.delete_thread(threads["» Drop Fake Health 2"])
-	end
-	if threads["» Drop Fake Health 1"] then
-		menu.delete_thread(threads["» Drop Fake Health 1"])
-	end
-	if threads["» Fake Armor Drop"] then
-		menu.delete_thread(threads["» Fake Armor Drop"])
-	end
-	if threads["» Drop Fake Armor 2"] then
-		menu.delete_thread(threads["» Drop Fake Armor 2"])
-	end
-	if threads["» Drop Fake Armor 1"] then
-		menu.delete_thread(threads["» Drop Fake Armor 1"])
-	end
-	if threads["» Fake P's & Q's Drop"] then
-		menu.delete_thread(threads["» Fake P's & Q's Drop"])
-	end
-	if threads["» Drop Fake P's & Q's 2"] then
-		menu.delete_thread(threads["» Drop Fake P's & Q's 2"])
-	end
-	if threads["» Drop Fake P's & Q's 1"] then
-		menu.delete_thread(threads["» Drop Fake P's & Q's 1"])
-	end
-	if threads["» Enola Gay"] then
-		menu.delete_thread(threads["» Enola Gay"])
-	end
-	if flight_mode_vehicle then
-		utilities.request_control_silent(flight_mode_vehicle)
-		utilities.hard_remove_entity(flight_mode_vehicle)
-		flight_mode_vehicle = nil
-	end
-	entity.set_entity_collision(player.get_player_ped(player.player_id()), true, true, false)
-	entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	if guided_missile_object then
-		utilities.hard_remove_entity(guided_missile_object)
-		guided_missile_object = nil
-	end
-	if guided_missile_object_vehicle then
-		utilities.hard_remove_entity(guided_missile_object_vehicle)
-		guided_missile_object_vehicle = nil
-	end
-	if guided_missile_cam then
-		natives.DESTROY_CAM(guided_missile_cam, false)
-		natives.RENDER_SCRIPT_CAMS(false, false, 0, true, true, 0)
-	end
-	if launch_guided_missile_scaleform then
-		graphics.set_scaleform_movie_as_no_longer_needed(launch_guided_missile_scaleform)
-	end
-	if launch_guided_missile_scaleform_2 then
-		graphics.set_scaleform_movie_as_no_longer_needed(launch_guided_missile_scaleform_2)
-	end
-	if save_current_pos then
-		save_current_pos = nil
-	end
-	if model_change_object_ then
-		entity.delete_entity(model_change_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if world_model_change_object_ then
-		entity.delete_entity(world_model_change_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_pizza_box_02_object_ then
-		entity.delete_entity(prop_pizza_box_02_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_pineapple_object_ then
-		entity.delete_entity(prop_pineapple_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_streetlight_05_object_ then
-		entity.delete_entity(prop_streetlight_05_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_traffic_01a_object_ then
-		entity.delete_entity(prop_traffic_01a_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_ecola_can_object_ then
-		entity.delete_entity(prop_ecola_can_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_bin_05a_object_ then
-		entity.delete_entity(prop_bin_05a_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_money_bag_01_object_ then
-		entity.delete_entity(prop_money_bag_01_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if hei_prop_cash_crate_empty_object_ then
-		entity.delete_entity(hei_prop_cash_crate_empty_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_wine_red_object_ then
-		entity.delete_entity(prop_wine_red_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_cash_case_02_object_ then
-		entity.delete_entity(prop_cash_case_02_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_cash_pile_02_object_ then
-		entity.delete_entity(prop_cash_pile_02_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_fire_hydrant_1_object_ then
-		entity.delete_entity(prop_fire_hydrant_1_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_streetlight_05_object_ then
-		entity.delete_entity(prop_streetlight_05_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_tree_cedar_s_01_object_ then
-		entity.delete_entity(prop_tree_cedar_s_01_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_cs_burger_01_object_ then
-		entity.delete_entity(prop_cs_burger_01_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if prop_turkey_leg_01_object_ then
-		entity.delete_entity(prop_turkey_leg_01_object_)
-		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-	end
-	if freeze_position_pos then
+		if threads["» Shoot Dogshit"] then
+			menu.delete_thread(threads["» Shoot Dogshit"])
+		end
+		if threads["» Fake Money Bag Drop"] then
+			menu.delete_thread(threads["» Fake Money Bag Drop"])
+		end
+		if threads["» Drop Fake Money Bag 2"] then
+			menu.delete_thread(threads["» Drop Fake Money Bag 2"])
+		end
+		if threads["» Drop Fake Money Bag 1"] then
+			menu.delete_thread(threads["» Drop Fake Money Bag 1"])
+		end
+		if threads["» Fake RP Drop"] then
+			menu.delete_thread(threads["» Fake RP Drop"])
+		end
+		if threads["» Drop Fake RP 2"] then
+			menu.delete_thread(threads["» Drop Fake RP 2"])
+		end
+		if threads["» Drop Fake RP 1"] then
+			menu.delete_thread(threads["» Drop Fake RP 1"])
+		end
+		if threads["» Fake Health Drop"] then
+			menu.delete_thread(threads["» Fake Health Drop"])
+		end
+		if threads["» Drop Fake Health 2"] then
+			menu.delete_thread(threads["» Drop Fake Health 2"])
+		end
+		if threads["» Drop Fake Health 1"] then
+			menu.delete_thread(threads["» Drop Fake Health 1"])
+		end
+		if threads["» Fake Armor Drop"] then
+			menu.delete_thread(threads["» Fake Armor Drop"])
+		end
+		if threads["» Drop Fake Armor 2"] then
+			menu.delete_thread(threads["» Drop Fake Armor 2"])
+		end
+		if threads["» Drop Fake Armor 1"] then
+			menu.delete_thread(threads["» Drop Fake Armor 1"])
+		end
+		if threads["» Fake P's & Q's Drop"] then
+			menu.delete_thread(threads["» Fake P's & Q's Drop"])
+		end
+		if threads["» Drop Fake P's & Q's 2"] then
+			menu.delete_thread(threads["» Drop Fake P's & Q's 2"])
+		end
+		if threads["» Drop Fake P's & Q's 1"] then
+			menu.delete_thread(threads["» Drop Fake P's & Q's 1"])
+		end
+		if threads["» Enola Gay"] then
+			menu.delete_thread(threads["» Enola Gay"])
+		end
+		if flight_mode_vehicle then
+			utilities.request_control_silent(flight_mode_vehicle)
+			utilities.hard_remove_entity(flight_mode_vehicle)
+			flight_mode_vehicle = nil
+		end
 		entity.set_entity_collision(player.get_player_ped(player.player_id()), true, true, false)
-		freeze_position_pos = nil
-	end
-	if previous_position_of_vehicle then
-		utilities.request_control_silent(player.get_player_vehicle(player.player_id()))
-		entity.set_entity_coords_no_offset(player.get_player_vehicle(player.player_id()), previous_position_of_vehicle)
-		previous_position_of_vehicle = nil
-	end
-	if orbital_cannon_room_blocking_object then
-		utilities.request_control_silent(orbital_cannon_room_blocking_object)
-		entity.delete_entity(orbital_cannon_room_blocking_object)
-		orbital_cannon_room_blocking_object = nil
-	end
-	for i = 0, 31 do
-		if meteor_entities["Player Target Ped " .. i] ~= nil and meteor_entities["Player Target Vehicle " .. i] ~= nil then
-			entity.delete_entity(meteor_entities["Player Target Ped " .. i])
-			entity.delete_entity(meteor_entities["Player Target Vehicle " .. i])
-			meteor_entities["Player Target Ped " .. i] = nil
-			meteor_entities["Player Target Vehicle " .. i] = nil
+		entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		if guided_missile_object then
+			utilities.hard_remove_entity(guided_missile_object)
+			guided_missile_object = nil
 		end
-	end
-	for i = 0, 31 do
-		if meteor_entities["» Remote Control " .. i] then
-			if player.is_player_in_any_vehicle(player.player_id()) then
-				ped.clear_ped_tasks_immediately(player.get_player_ped(player.player_id()))
-			end
-			network.request_control_of_entity(meteor_entities["» Remote Control " .. i])
-			entity.detach_entity(meteor_entities["» Remote Control " .. i])
-			utilities.hard_remove_entity(meteor_entities["» Remote Control " .. i])
+		if guided_missile_object_vehicle then
+			utilities.hard_remove_entity(guided_missile_object_vehicle)
+			guided_missile_object_vehicle = nil
+		end
+		if guided_missile_cam then
+			natives.DESTROY_CAM(guided_missile_cam, false)
+			natives.RENDER_SCRIPT_CAMS(false, false, 0, true, true, 0)
+		end
+		if launch_guided_missile_scaleform then
+			graphics.set_scaleform_movie_as_no_longer_needed(launch_guided_missile_scaleform)
+		end
+		if launch_guided_missile_scaleform_2 then
+			graphics.set_scaleform_movie_as_no_longer_needed(launch_guided_missile_scaleform_2)
+		end
+		if save_current_pos then
+			save_current_pos = nil
+		end
+		if model_change_object_ then
+			entity.delete_entity(model_change_object_)
 			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
-			meteor_entities["» Remote Control " .. i] = nil
 		end
-	end
-	if ww2_rogue then
-		for a = 1, 20 do
-			if entity.is_an_entity(ww2_rogue[a]) then
-				utilities.hard_remove_entity(ww2_rogue[a])
-			end
-			if entity.is_an_entity(ww2_ped_pilot_rogue[a]) then
-				utilities.hard_remove_entity(ww2_ped_pilot_rogue[a])
-			end
+		if world_model_change_object_ then
+			entity.delete_entity(world_model_change_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
 		end
-	end
-	if ww2_nokota then
-		for b = 1, 10 do
-			if entity.is_an_entity(ww2_nokota[b]) then
-				utilities.hard_remove_entity(ww2_nokota[b])
-			end
-			if entity.is_an_entity(ww2_ped_pilot_nokota[b]) then
-				utilities.hard_remove_entity(ww2_ped_pilot_nokota[b])
-			end
+		if prop_pizza_box_02_object_ then
+			entity.delete_entity(prop_pizza_box_02_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
 		end
-	end
-	if ww2_rhino then
-		for c = 1, 20 do
-			if entity.is_an_entity(ww2_rhino[c]) then
-				utilities.hard_remove_entity(ww2_rhino[c])
-			end
-			if entity.is_an_entity(ww2_ped_pilot_rhino[c]) then
-				utilities.hard_remove_entity(ww2_ped_pilot_rhino[c])
-			end
+		if prop_pineapple_object_ then
+			entity.delete_entity(prop_pineapple_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
 		end
-	end
-	if ww2_soldier then
-		for d = 1, 30 do
-			if entity.is_an_entity(ww2_soldier[d]) then
-				utilities.hard_remove_entity(ww2_soldier[d])
-			end
+		if prop_streetlight_05_object_ then
+			entity.delete_entity(prop_streetlight_05_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
 		end
-	end
-	if ww2_insurgent then
-		for e = 1, 20 do
-			if entity.is_an_entity(ww2_insurgent[e]) then
-				utilities.hard_remove_entity(ww2_insurgent[e])
-			end
-			if entity.is_an_entity(ww2_ped_pilot_insurgent[e]) then
-				utilities.hard_remove_entity(ww2_ped_pilot_insurgent[e])
-			end
-			if entity.is_an_entity(ww2_ped_pilot_2_insurgent[e]) then
-				utilities.hard_remove_entity(ww2_ped_pilot_2_insurgent[e])
-			end
+		if prop_traffic_01a_object_ then
+			entity.delete_entity(prop_traffic_01a_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
 		end
-	end
-	if table_of_all_lazers then
-		for i = 1, #table_of_all_lazers do
-			if entity.is_an_entity(table_of_all_lazers[i]) then
-				utilities.hard_remove_entity(table_of_all_lazers[i])
-				table_of_all_lazers[i] = nil
-			end
+		if prop_ecola_can_object_ then
+			entity.delete_entity(prop_ecola_can_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
 		end
-	end
-	count_of_all_lazers = nil
-	if enola_gay then
-		utilities.hard_remove_entity(enola_gay)
-		enola_gay = nil
-	end
-	if little_boy then
-		utilities.hard_remove_entity(little_boy)
-		little_boy = nil
-	end
-	if little_boy_2 then
-		utilities.hard_remove_entity(little_boy_2)
-		little_boy_2 = nil
-	end
-	if send_tactical_nuke then
-		utilities.hard_remove_entity(send_tactical_nuke)
-		send_tactical_nuke = nil
-	end
-	if send_tactical_nuke_blip then
-		ui.remove_blip(send_tactical_nuke_blip)
-	end
-	dropped_little_boy = false
-	little_boy_2_exploded_in_water = false
-	little_boy_exploded = false
-	little_boy_rotation = nil
-	if enola_gay_map_blip_bomb then
-		ui.remove_blip(enola_gay_map_blip_bomb)
-	end
-	if enola_gay_map_blip_repair then
-		ui.remove_blip(enola_gay_map_blip_repair)
-	end
-	rope.rope_unload_textures()
-	rope_target_1 = nil
-	rope_target_2 = nil
-	rope_wait_a_second = false
-	if table_of_all_ropes then
-		for i = 1, #table_of_all_ropes do
-			if rope.does_rope_exist(table_of_all_ropes[i]) then
-				rope.delete_rope(table_of_all_ropes[i])
-				table_of_all_ropes[i] = nil
+		if prop_bin_05a_object_ then
+			entity.delete_entity(prop_bin_05a_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		end
+		if prop_money_bag_01_object_ then
+			entity.delete_entity(prop_money_bag_01_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		end
+		if hei_prop_cash_crate_empty_object_ then
+			entity.delete_entity(hei_prop_cash_crate_empty_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		end
+		if prop_wine_red_object_ then
+			entity.delete_entity(prop_wine_red_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		end
+		if prop_cash_case_02_object_ then
+			entity.delete_entity(prop_cash_case_02_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		end
+		if prop_cash_pile_02_object_ then
+			entity.delete_entity(prop_cash_pile_02_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		end
+		if prop_fire_hydrant_1_object_ then
+			entity.delete_entity(prop_fire_hydrant_1_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		end
+		if prop_streetlight_05_object_ then
+			entity.delete_entity(prop_streetlight_05_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		end
+		if prop_tree_cedar_s_01_object_ then
+			entity.delete_entity(prop_tree_cedar_s_01_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		end
+		if prop_cs_burger_01_object_ then
+			entity.delete_entity(prop_cs_burger_01_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		end
+		if prop_turkey_leg_01_object_ then
+			entity.delete_entity(prop_turkey_leg_01_object_)
+			entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+		end
+		if freeze_position_pos then
+			entity.set_entity_collision(player.get_player_ped(player.player_id()), true, true, false)
+			freeze_position_pos = nil
+		end
+		if previous_position_of_vehicle then
+			utilities.request_control_silent(player.get_player_vehicle(player.player_id()))
+			entity.set_entity_coords_no_offset(player.get_player_vehicle(player.player_id()), previous_position_of_vehicle)
+			previous_position_of_vehicle = nil
+		end
+		if orbital_cannon_room_blocking_object then
+			utilities.request_control_silent(orbital_cannon_room_blocking_object)
+			entity.delete_entity(orbital_cannon_room_blocking_object)
+			orbital_cannon_room_blocking_object = nil
+		end
+		for i = 0, 31 do
+			if meteor_entities["Player Target Ped " .. i] ~= nil and meteor_entities["Player Target Vehicle " .. i] ~= nil then
+				entity.delete_entity(meteor_entities["Player Target Ped " .. i])
+				entity.delete_entity(meteor_entities["Player Target Vehicle " .. i])
+				meteor_entities["Player Target Ped " .. i] = nil
+				meteor_entities["Player Target Vehicle " .. i] = nil
 			end
 		end
-	end
-	for i = 1, #all_front_ramps_table do
-		if entity.is_an_entity(all_front_ramps_table[i]) then
-			entity.delete_entity(all_front_ramps_table[i])
-			all_front_ramps_table[i] = nil
+		for i = 0, 31 do
+			if meteor_entities["» Remote Control " .. i] then
+				if player.is_player_in_any_vehicle(player.player_id()) then
+					ped.clear_ped_tasks_immediately(player.get_player_ped(player.player_id()))
+				end
+				network.request_control_of_entity(meteor_entities["» Remote Control " .. i])
+				entity.detach_entity(meteor_entities["» Remote Control " .. i])
+				utilities.hard_remove_entity(meteor_entities["» Remote Control " .. i])
+				entity.set_entity_visible(player.get_player_ped(player.player_id()), true)
+				meteor_entities["» Remote Control " .. i] = nil
+			end
 		end
-	end
-	for i = 0, 31 do
-		if eventhooks["» Log Script Events " .. i] then
-			hook.remove_script_event_hook(eventhooks["» Log Script Events " .. i])
-			eventhooks["» Log Script Events " .. i] = nil
+		if ww2_rogue then
+			for a = 1, 20 do
+				if entity.is_an_entity(ww2_rogue[a]) then
+					utilities.hard_remove_entity(ww2_rogue[a])
+				end
+				if entity.is_an_entity(ww2_ped_pilot_rogue[a]) then
+					utilities.hard_remove_entity(ww2_ped_pilot_rogue[a])
+				end
+			end
 		end
-		if eventhooks["» Log Net Events " .. i] then
-			hook.remove_net_event_hook(eventhooks["» Log Net Events " .. i])
-			eventhooks["» Log Net Events " .. i] = nil
+		if ww2_nokota then
+			for b = 1, 10 do
+				if entity.is_an_entity(ww2_nokota[b]) then
+					utilities.hard_remove_entity(ww2_nokota[b])
+				end
+				if entity.is_an_entity(ww2_ped_pilot_nokota[b]) then
+					utilities.hard_remove_entity(ww2_ped_pilot_nokota[b])
+				end
+			end
 		end
-	end
-	all_front_ramps_count = nil
-	ww2_rogue = nil
-	ww2_ped_pilot_rogue = nil
-	ww2_nokota = nil
-	ww2_ped_pilot_nokota = nil
-	ww2_rhino = nil
-	ww2_ped_pilot_rhino = nil
-	ww2_soldier = nil
-	ww2_insurgent = nil
-	ww2_ped_pilot_insurgent = nil
-	ww2_ped_pilot_2_insurgent = nil
-	auto_pilot_speed = nil
-	auto_pilot_rotation = nil
-	if freecam_player_cam then
-		entity.freeze_entity(player.get_player_ped(player.player_id()), false)
-		natives.DESTROY_CAM(freecam_player_cam, false)
-		natives.RENDER_SCRIPT_CAMS(false, false, 0, true, true, 0)
-		freecam_player_cam = nil
-	end
-	if anti_crash_cam_pos then
-		entity.set_entity_coords_no_offset(player.get_player_ped(player.player_id()), anti_crash_cam_pos)
-		anti_crash_cam_pos = nil
-	end
-	if anti_crash_cam_player_cam then
-		natives.DESTROY_CAM(anti_crash_cam_player_cam, false)
-		natives.RENDER_SCRIPT_CAMS(false, false, 0, true, true, 0)
-		anti_crash_cam_player_cam = nil
-	end
-	natives.UNLOCK_MINIMAP_POSITION()
-	menu.notify("Unloaded Menu! Cleanup Successful!", Meteor, 5, 0x00ff00)
-	Meteor = nil
-	event.remove_event_listener("exit", listeners["Menu Unload"])
-end)
+		if ww2_rhino then
+			for c = 1, 20 do
+				if entity.is_an_entity(ww2_rhino[c]) then
+					utilities.hard_remove_entity(ww2_rhino[c])
+				end
+				if entity.is_an_entity(ww2_ped_pilot_rhino[c]) then
+					utilities.hard_remove_entity(ww2_ped_pilot_rhino[c])
+				end
+			end
+		end
+		if ww2_soldier then
+			for d = 1, 30 do
+				if entity.is_an_entity(ww2_soldier[d]) then
+					utilities.hard_remove_entity(ww2_soldier[d])
+				end
+			end
+		end
+		if ww2_insurgent then
+			for e = 1, 20 do
+				if entity.is_an_entity(ww2_insurgent[e]) then
+					utilities.hard_remove_entity(ww2_insurgent[e])
+				end
+				if entity.is_an_entity(ww2_ped_pilot_insurgent[e]) then
+					utilities.hard_remove_entity(ww2_ped_pilot_insurgent[e])
+				end
+				if entity.is_an_entity(ww2_ped_pilot_2_insurgent[e]) then
+					utilities.hard_remove_entity(ww2_ped_pilot_2_insurgent[e])
+				end
+			end
+		end
+		if table_of_all_lazers then
+			for i = 1, #table_of_all_lazers do
+				if entity.is_an_entity(table_of_all_lazers[i]) then
+					utilities.hard_remove_entity(table_of_all_lazers[i])
+					table_of_all_lazers[i] = nil
+				end
+			end
+		end
+		count_of_all_lazers = nil
+		if enola_gay then
+			utilities.hard_remove_entity(enola_gay)
+			enola_gay = nil
+		end
+		if little_boy then
+			utilities.hard_remove_entity(little_boy)
+			little_boy = nil
+		end
+		if little_boy_2 then
+			utilities.hard_remove_entity(little_boy_2)
+			little_boy_2 = nil
+		end
+		if send_tactical_nuke then
+			utilities.hard_remove_entity(send_tactical_nuke)
+			send_tactical_nuke = nil
+		end
+		if send_tactical_nuke_blip then
+			ui.remove_blip(send_tactical_nuke_blip)
+		end
+		dropped_little_boy = false
+		little_boy_2_exploded_in_water = false
+		little_boy_exploded = false
+		little_boy_rotation = nil
+		if enola_gay_map_blip_bomb then
+			ui.remove_blip(enola_gay_map_blip_bomb)
+		end
+		if enola_gay_map_blip_repair then
+			ui.remove_blip(enola_gay_map_blip_repair)
+		end
+		rope.rope_unload_textures()
+		rope_target_1 = nil
+		rope_target_2 = nil
+		rope_wait_a_second = false
+		if table_of_all_ropes then
+			for i = 1, #table_of_all_ropes do
+				if rope.does_rope_exist(table_of_all_ropes[i]) then
+					rope.delete_rope(table_of_all_ropes[i])
+					table_of_all_ropes[i] = nil
+				end
+			end
+		end
+		for i = 1, #all_front_ramps_table do
+			if entity.is_an_entity(all_front_ramps_table[i]) then
+				entity.delete_entity(all_front_ramps_table[i])
+				all_front_ramps_table[i] = nil
+			end
+		end
+		for i = 0, 31 do
+			if eventhooks["» Log Script Events " .. i] then
+				hook.remove_script_event_hook(eventhooks["» Log Script Events " .. i])
+				eventhooks["» Log Script Events " .. i] = nil
+			end
+			if eventhooks["» Log Net Events " .. i] then
+				hook.remove_net_event_hook(eventhooks["» Log Net Events " .. i])
+				eventhooks["» Log Net Events " .. i] = nil
+			end
+		end
+		all_front_ramps_count = nil
+		ww2_rogue = nil
+		ww2_ped_pilot_rogue = nil
+		ww2_nokota = nil
+		ww2_ped_pilot_nokota = nil
+		ww2_rhino = nil
+		ww2_ped_pilot_rhino = nil
+		ww2_soldier = nil
+		ww2_insurgent = nil
+		ww2_ped_pilot_insurgent = nil
+		ww2_ped_pilot_2_insurgent = nil
+		auto_pilot_speed = nil
+		auto_pilot_rotation = nil
+		if freecam_player_cam then
+			entity.freeze_entity(player.get_player_ped(player.player_id()), false)
+			natives.DESTROY_CAM(freecam_player_cam, false)
+			natives.RENDER_SCRIPT_CAMS(false, false, 0, true, true, 0)
+			freecam_player_cam = nil
+		end
+		if anti_crash_cam_pos then
+			entity.set_entity_coords_no_offset(player.get_player_ped(player.player_id()), anti_crash_cam_pos)
+			anti_crash_cam_pos = nil
+		end
+		if anti_crash_cam_player_cam then
+			natives.DESTROY_CAM(anti_crash_cam_player_cam, false)
+			natives.RENDER_SCRIPT_CAMS(false, false, 0, true, true, 0)
+			anti_crash_cam_player_cam = nil
+		end
+		natives.UNLOCK_MINIMAP_POSITION()
+		natives.FREEZE_ENTITY_POSITION(player.get_player_ped(player.player_id()), false)
+		menu.notify("Unloaded Menu! Cleanup Successful!", Meteor, 5, 0x00ff00)
+		Meteor = nil
+		event.remove_event_listener("exit", listeners["Menu Unload"])
+	end)
+end
 
 if utils.file_exists(utils.get_appdata_path("PopstarDevs", "2Take1Menu").."\\scripts\\MeteorDev\\MeteorDev.lua") then
 	meteordevlocalparent = menu.add_feature("» Dev Features", "parent", localparents["» Meteor"])
@@ -22855,6 +23291,9 @@ do
 						end
 						if tostring(parts[3]) ~= "nil" then
 							feature["" .. parts[1] .. ""].value = tonumber(parts[3])
+							if settings["" .. parts[1] .. ""].Value then
+								settings["" .. parts[1] .. ""].Value = tonumber(parts[3])
+							end
 						end
 					end
 				end
@@ -22874,6 +23313,9 @@ do
 						end
 						if tostring(parts[3]) ~= "nil" then
 							feature["" .. parts[1] .. ""].value = tonumber(parts[3])
+							if settings["" .. parts[1] .. ""].Value then
+								settings["" .. parts[1] .. ""].Value = tonumber(parts[3])
+							end
 						end
 					end
 				end
@@ -22900,6 +23342,9 @@ do
 						end
 						if tostring(parts[3]) ~= "nil" then
 							feature["" .. parts[1] .. ""].value = tonumber(parts[3])
+							if settings["" .. parts[1] .. ""].Value then
+								settings["" .. parts[1] .. ""].Value = tonumber(parts[3])
+							end
 						end
 					end
 				end
@@ -22935,7 +23380,7 @@ do
 					graphics.begin_scaleform_movie_method(script_execute_scaleform, "SHOW_SHARD_WASTED_MP_MESSAGE")
 					graphics.draw_scaleform_movie_fullscreen(script_execute_scaleform, 255, 255, 255, 255, 0)
 					graphics.scaleform_movie_method_add_param_texture_name_string("Welcome")
-					graphics.scaleform_movie_method_add_param_texture_name_string("Meteor v1.5.0")
+					graphics.scaleform_movie_method_add_param_texture_name_string("Meteor v1.6.0")
 					graphics.end_scaleform_movie_method(script_execute_scaleform)
 				end
 			end, nil)
@@ -22946,7 +23391,8 @@ do
 	end
 end
 
-menu.notify("Loaded Script Successfully!\n\nMeteor v1.5.0 for 2Take1 v" .. menu.get_version() .. "", Meteor, 6, 0x00ff00)
+
+menu.notify("Loaded Script Successfully!\n\nMeteor v1.6.0 for 2Take1 v" .. menu.get_version() .. "", Meteor, 6, 0x00ff00)
 
 
 --	░█████╗░██████╗░███████╗██████╗░██╗████████╗░██████╗  ░█████╗░███╗░░██╗██████╗░  ██████╗░██╗░██████╗░  ████████╗██╗░░██╗░█████╗░███╗░░██╗██╗░░██╗░██████╗  ████████╗░█████╗░  ██╗

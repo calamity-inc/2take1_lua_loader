@@ -206,6 +206,16 @@ function utilities.set_entity_coords(i, p)
     entity.set_entity_coords_no_offset(i, p)
 end
 
+function utilities.is_phone_open()
+    if natives.GET_NUMBER_OF_REFERENCES_OF_SCRIPT_WITH_NAME_HASH(gameplay.get_hash_key("cellphone_flashhand")):__tointeger() > 0 then
+        return true
+    end
+    if script.get_global_i(19954 + 1) > 3 then
+        return true
+    end
+    return false
+end
+
 function utilities.clear_ptfx(ptfx)
 	if ptfx then
 		network.request_control_of_entity(ptfx)

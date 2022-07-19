@@ -12,6 +12,7 @@ settings["» Flames"] = {Enabled = false, Value = nil}
 settings["» Flames Gun Effects"] = {Enabled = false, Value = nil}
 settings["» Rapid Fire"] = {Enabled = false, Value = 0}
 settings["» Flamethrower"] = {Enabled = false, Value = 0.5}
+settings["» Mine Impact Gun"] = {Enabled = false, Value = 0}
 settings["» Delete Gun"] = {Enabled = false, Value = nil}
 settings["» Nuke Gun"] = {Enabled = false, Value = nil}
 settings["» Airstrike Gun"] = {Enabled = false, Value = 0}
@@ -59,6 +60,7 @@ settings["» Russian Roulette"] = {Enabled = nil, Value = 0}
 settings["» Random Player"] = {Enabled = nil, Value = 0}
 settings["» Auto Force Session Host"] = {Enabled = false, Value = nil}
 settings["» Auto Force Script Host"] = {Enabled = false, Value = nil}
+settings["» Block Join Requests"] = {Enabled = false, Value = nil}
 settings["» Hide Session"] = {Enabled = false, Value = nil}
 settings["» Disable Recording"] = {Enabled = false, Value = nil}
 settings["» Local Time"] = {Enabled = false, Value = nil}
@@ -68,6 +70,9 @@ settings["» Override Weather"] = {Enabled = false, Value = 0}
 settings["» Change Weather"] = {Enabled = nil, Value = 0}
 settings["» Override Cloud Hat"] = {Enabled = false, Value = 0}
 settings["» Change Cloud Hat"] = {Enabled = nil, Value = 0}
+settings["» Set Wind Speed"] = {Enabled = nil, Value = 0}
+settings["» Set Rain Level"] = {Enabled = nil, Value = 0}
+settings["» Set Snow Level"] = {Enabled = nil, Value = 0}
 settings["» Auto Godmode Remover"] = {Enabled = false, Value = nil}
 settings["» Notify Orbital Cannon Room Events"] = {Enabled = false, Value = nil}
 settings["» Aim Response Crash"] = {Enabled = false, Value = 0}
@@ -91,6 +96,7 @@ settings["» Anti Explosive Sniper"] = {Enabled = false, Value = 0}
 settings["» Anti East Ukraine"] = {Enabled = false, Value = 0}
 settings["» Anti West Taiwan"] = {Enabled = false, Value = 0}
 settings["» Anti Level 8000"] = {Enabled = false, Value = 0}
+settings["» Anti Down Syndrome"] = {Enabled = false, Value = 0}
 settings["» Anti Submarine Missile"] = {Enabled = false, Value = nil}
 settings["» Auto Kick All Modders"] = {Enabled = false, Value = nil}
 settings["» Exclude Yourself From No Fly Zones"] = {Enabled = false, Value = nil}
@@ -99,6 +105,7 @@ settings["» Bouncy Vehicles"] = {Enabled = false, Value = nil}
 settings["» Zero Gravity Vehicles"] = {Enabled = false, Value = nil}
 settings["» Reduce Vehicle Grip"] = {Enabled = false, Value = nil}
 settings["» Out Of Control"] = {Enabled = nil, Value = 0}
+settings["» Frodo In Da Hood"] = {Enabled = false, Value = nil}
 settings["» Clumsy Peds"] = {Enabled = false, Value = nil}
 settings["» Petrol Leaking Vehicles"] = {Enabled = false, Value = nil}
 settings["» Ped Scream"] = {Enabled = false, Value = nil}
@@ -123,6 +130,7 @@ settings["» Nearby Peds Godmode"] = {Enabled = false, Value = nil}
 settings["» Nearby Vehicles Godmode"] = {Enabled = false, Value = nil}
 settings["» Lock All Vehicle Doors"] = {Enabled = false, Value = nil}
 settings["» Train Key Control"] = {Enabled = false, Value = nil}
+settings["» RGB Neons"] = {Enabled = false, Value = 0}
 settings["» Vehicle Godmode"] = {Enabled = false, Value = 0}
 settings["» Heli Blades Speed"] = {Enabled = false, Value = 0}
 settings["» Remove Plane Turbulence"] = {Enabled = false, Value = nil}
@@ -173,19 +181,19 @@ settings["» Modded OTR Detection"] = {Enabled = false, Value = 0}
 settings["» Bad Parachute Model Detection"] = {Enabled = false, Value = 0}
 settings["» Modded Explosion Detection"] = {Enabled = false, Value = 0}
 settings["» Uh Oh Spaghetti O's Detection"] = {Enabled = false, Value = 0}
-settings["» Invalid Movement Detection"] = {Enabled = false, Value = 0}
 settings["» Modded Vehicle Modification Detection"] = {Enabled = false, Value = 0}
 settings["» Scripted Entity Spawn Detection"] = {Enabled = false, Value = 0}
 settings["» No Ragdoll Detection"] = {Enabled = false, Value = 0}
-settings["» Infinite Ammo Detection"] = {Enabled = false, Value = 0}
 settings["» Anti AFK Bypass Detection"] = {Enabled = false, Value = 0}
 settings["» Teleportation Detection"] = {Enabled = false, Value = 0}
 settings["» Super Run Detection"] = {Enabled = false, Value = 0}
+settings["» Lobby Spoof Detection"] = {Enabled = false, Value = 0}
 settings["» Exclude Friends From Detections"] = {Enabled = false, Value = nil}
 settings["» Exclude Whitelisted Players From Detections"] = {Enabled = false, Value = nil}
 settings["» Auto Waypoint Tp"] = {Enabled = false, Value = nil}
 settings["» Display Welcome Screen"] = {Enabled = true, Value = nil}
 settings["» Header Height Offset"] = {Enabled = nil, Value = 0.75}
+settings["» Header Alpha"] = {Enabled = nil, Value = 255}
 settings["» Header Playback Speed"] = {Enabled = nil, Value = 100}
 settings["» Downgrade To Standard"] = {Enabled = false, Value = nil}
 settings["» Chat Command Prefix"] = {Enabled = false, Value = "!"}

@@ -39,6 +39,31 @@ function player_func.is_player_driver(pid)
 	return player.get_player_from_ped(vehicle.get_ped_in_vehicle_seat(player.get_player_vehicle(pid), -1)) == pid
 end
 
+function player_func.get_player_name(pid, mode)
+	local Name = "**Invalid**"
+	if player.is_player_valid(pid) then
+		if mode == 1 then
+			Name = player.get_player_name(pid)
+		elseif mode == 2 then
+			Name = natives.GET_PLAYER_NAME(pid):__tostring(true)
+		elseif mode == 3 then
+			Name = natives.NETWORK_PLAYER_GET_NAME(pid):__tostring(true)
+		else
+			local Buffer = native.ByteBuffer8()
+			natives.NETWORK_HANDLE_FROM_PLAYER(pid, Buffer, 13)
+			local Start = natives.NETWORK_GAMERTAG_FROM_HANDLE_START(Buffer):__tointeger()
+			if Start == 1 then
+				local GetName = natives.NETWORK_GET_GAMERTAG_FROM_HANDLE(Buffer):__tostring(true)
+				local End = natives.NETWORK_GAMERTAG_FROM_HANDLE_SUCCEEDED():__tointeger()
+				if End == 1 then
+					Name = GetName
+				end
+			end
+		end
+	end
+	return Name
+end
+
 function player_func.is_player_typing(pid)
 	if script.get_global_i(1644218 + 2 + 241 + 136 + pid) & 1 << 16 == 0 then
 		return false
