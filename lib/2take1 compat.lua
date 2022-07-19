@@ -2079,13 +2079,11 @@ decorator = {
 	decor_set_time = DECORATOR.DECOR_SET_TIME,
 }
 
-hook = {
-	register_script_event_hook = function(...)
-		-- silently ignore this
-	end,
-	register_net_event_hook = function(...)
-		-- silently ignore this
-	end
+hook = { -- silently ignore all this shit because, guess what, stand comes with protections
+	register_script_event_hook = function() end,
+	register_net_event_hook = function() end,
+	remove_script_event_hook = function() end,
+	remove_net_event_hook = function() end,
 }
 
 native = {
