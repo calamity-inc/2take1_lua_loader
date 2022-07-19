@@ -1,4 +1,6 @@
 local stand = menu
+local util = _G["util"]
+local filesystem = _G["filesystem"]
 local config = require("2take1 compat")
 
 local og_g_keys = {}

@@ -1,6 +1,18 @@
 util.require_natives(1651208000)
 util.keep_running()
+
+-- keep stand-specific apis to ourselves
 local stand = menu
+local players = _G["players"]; _G["players"] = nil
+local entities = _G["entities"]; _G["entities"] = nil
+local chat = _G["chat"]; _G["chat"] = nil
+local directx = _G["directx"]; _G["directx"] = nil
+local util = _G["util"]; _G["util"] = nil
+local lang = _G["lang"]; _G["lang"] = nil
+local filesystem = _G["filesystem"]; _G["filesystem"] = nil
+local async_http = _G["async_http"]; _G["async_http"] = nil
+local memory = _G["memory"]; _G["memory"] = nil
+local profiling = _G["profiling"]; _G["profiling"] = nil
 
 package.path = package.path .. ";" .. filesystem.stand_dir() .. "From 2Take1Menu\\scripts\\?.lua"
 
