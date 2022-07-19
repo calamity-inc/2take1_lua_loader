@@ -827,6 +827,12 @@ menu = {
 		end
 	end,
 	create_thread = util.create_thread,
+	has_thread_finished = function (t)
+		if type(t) == "thread" then
+			return coroutine.status(t) == "dead"
+		end
+		return true
+	end,
 	is_trusted_mode_enabled = function ()
 		return true
 	end,
