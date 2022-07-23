@@ -805,9 +805,7 @@ menu = {
 		return true
 	end,
 	get_version = function ()
-		-- only instance I can see of this being used: "Meteor v1.5.0 for 2Take1 v" .. menu.get_version()
-		-- will need a more reasonable value if any script does version comparisons
-		return "STANDONTOP"
+		return "2.62.1"
 	end
 }
 
@@ -2095,13 +2093,11 @@ decorator = {
 	decor_set_time = DECORATOR.DECOR_SET_TIME,
 }
 
-hook = {
-	register_script_event_hook = function(...)
-		-- silently ignore this
-	end,
-	register_net_event_hook = function(...)
-		-- silently ignore this
-	end
+hook = { -- silently ignore all this shit because, guess what, stand comes with protections
+	register_script_event_hook = function() end,
+	register_net_event_hook = function() end,
+	remove_script_event_hook = function() end,
+	remove_net_event_hook = function() end,
 }
 
 native = {
