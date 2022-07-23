@@ -179,15 +179,9 @@ local v3_meta = {
 }
 
 v3 = function (x, y, z)
-	if x == nil then
-		x = 0.0
-	end
-	if y == nil then
-		y = 0.0
-	end
-	if z == nil then
-		z = 0.0
-	end
+	x = x or 0.0
+	y = y or 0.0
+	z = z or 0.0
 	local vec =
 	{	x = x, y = y or x, z = z or x,
 
@@ -412,6 +406,8 @@ local feature_meta = {
 
 local player_features = {}
 
+
+
 local feat = {
     new = function(name, parent, type)
 		local parent_ft = parents[parent]
@@ -484,7 +480,13 @@ parents[root_parent.id] = root_parent
 
 local feature_types = {
 	parent = function (name, parent, handler, pid)
-		if parent == 0 or parent == nil then parent = pid and stand.player_root(pid) or stand.my_root() end
+		if parent == 0 or parent == nil then
+			if pid then
+				parent = stand.player_root(pid)
+			else
+				parent = stand.my_root()
+			end
+		end
 		local f = feat.new(name, parent)
 
 		f.id = stand.list(parent, name, {name}, "", function ()
@@ -721,6 +723,13 @@ local feature_types = {
 	end
 }
 
+--players.on_join(function(pid)
+--	for _, playerfeat in pairs(player_features) do
+--		local parent_playerfeat = player_features[playerfeat.parent].playerfeat
+--		playerfeat.playerfeat.feats[#playerfeat.playerfeat.feats + 1] = feature_types[playerfeat.type](playerfeat.name, parent_playerfeat.id, playerfeat.handler, pid)
+--	end
+--end)
+
 menu = {
 	add_feature = function (name, type, parent, handler)
 		local feature_type = feature_types[type]
@@ -734,9 +743,9 @@ menu = {
 		local feature_type = feature_types[type]
 		if feature_type == nil then util.toast(type.." not found") return end
 		local feats = {}
-		local features = player_features[parent]
-		if features then
-			for _, p_feat in pairs(features.feats) do
+		local parent_playerfeat = player_features[parent]
+		if parent_playerfeat then
+			for _, p_feat in pairs(parent_playerfeat.playerfeat.feats) do
 				local new_feat = feature_type(name, p_feat.id, handler or function() end, p_feat.pid)
 				new_feat.pid = p_feat.pid
 				new_feat.type = feature_type_ids.regular[type]
@@ -744,7 +753,7 @@ menu = {
 			end
 		else
 			for _, pid in ipairs(players.list()) do
-				if parent == nil or parent == 0 then parent = stand.player_root(pid) end
+				parent = stand.player_root(pid)
 
 				local new_feat = feature_type(name, parent, handler or function() end, pid)
 				new_feat.pid = pid
@@ -755,10 +764,15 @@ menu = {
 
 		local new_player_feat = player_feat.new(parent, feats, feature_type_ids.player[type])
 
-		new_player_feat.id = util.joaat(name..type) --generate an id to use for the player feature
+		new_player_feat.id = util.joaat(name..type..tostring(util.current_time_millis())) --generate an id to use for the player feature
 
-		existing_features[new_player_feat.id] = new_player_feat
-		player_features[new_player_feat.id] = new_player_feat
+		player_features[new_player_feat.id] = {
+			playerfeat = new_player_feat,
+			name = name,
+			type = type,
+			parent = parent,
+			handler = handler
+		}
 		return new_player_feat
 	end,
 	notify = function (message, title, _, _)
@@ -767,17 +781,17 @@ menu = {
 		util.toast(message, TOAST_ALL)
 	end,
 	get_player_feature = function (id)
-		return player_features[id]
+		return player_features[id].playerfeat
 	end,
 	delete_feature = function (id)
-		local feature = existing_features[id]
+		local feature = existing_features[id] or player_features[id].playerfeat
 		if feature then
 			feature.parent.children[feature.id] = nil
 		end
 		stand.delete(id)
 	end,
 	delete_player_feature = function (id)
-		local p_feature = player_features[id]
+		local p_feature = player_features[id].playerfeat
 		if p_feature then
 			for _, feature in pairs(p_feature.feats) do
 				feature.parent.children[feature.id] = nil
