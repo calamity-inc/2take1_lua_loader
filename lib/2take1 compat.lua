@@ -2194,6 +2194,12 @@ native = {
 			end
 		end
 		native_invoker.end_call(string.format("%X", hash))
+		return {
+			__tointeger = native_invoker.get_return_value_int,
+			__tonumber = native_invoker.get_return_value_float,
+			__tostring = native_invoker.get_return_value_string,
+			__tov3 = native_invoker.get_return_value_vector3,
+		}
 	end
 }
 
