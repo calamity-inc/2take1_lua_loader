@@ -464,6 +464,7 @@ local feat = {
 			_value=0,
 			_hidden=false,
 			set_str_data = function (self, data)
+				self.str_data = data
 				local feat = player_features[self.id]
 				if feat then
 					for _, command in ipairs(feat) do
