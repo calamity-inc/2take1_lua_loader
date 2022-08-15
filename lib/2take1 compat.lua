@@ -140,8 +140,22 @@ local feature_type_ids = { -- The table values are stolen from kek's essentials.
 
 vec3 = v3
 
+local v2_meta = {
+	__div=function (self, other)
+		if type(other) == "table" then
+			return v2(	self.x / other.x,
+						self.y / other.y)
+		elseif type(other) == "number" then
+			return v2(	self.x / other,
+						self.y / other)
+		end
+	end,
+}
+
 v2 = function (x, y)
-	return {x = x, y = y}
+	local inst = {x = x, y = y}
+	setmetatable(inst, v2_meta)
+	return inst
 end
 
 local v3_meta = {
@@ -833,6 +847,9 @@ menu = {
 		end
 		return true
 	end,
+	delete_thread = function()
+		notif_not_imp()
+	end,
 	is_trusted_mode_enabled = function ()
 		return true
 	end,
@@ -996,8 +1013,24 @@ ui = {
 scriptdraw = {
 	register_sprite = directx.create_texture,
 	draw_sprite = function (id, pos, scale, rot, colour)
-		c = IntToRGBA(colour)
+		local c = IntToRGBA(colour)
 		directx.draw_texture(id, scale, scale, 0.5 , 0.5, pos.x, pos.y, rot, c[1], c[2], c[3], c[4])
+	end,
+	get_text_size = function (str, factor)
+		return v2(0.001, 0.001)
+	end,
+	size_pixel_to_rel_x = function (x)
+		return x
+	end,
+	size_pixel_to_rel_y = function (y)
+		return y
+	end,
+	draw_text = function (text, pos, size, scale, rgba, outline, unk)
+		util.BEGIN_TEXT_COMMAND_DISPLAY_TEXT(text)
+		HUD.END_TEXT_COMMAND_DISPLAY_TEXT(pos.x, pos.y, 0)
+	end,
+	draw_line = function(pos1, pos2, unk, rgba)
+		notif_not_imp()
 	end
 }
 
@@ -2163,6 +2196,12 @@ native = {
 	end
 }
 
+web = {
+	urlencode = function (str) return str end,
+	urldecode = function (str) return str end,
+	get = function () return 0, "" end
+}
+
 local fucky_meta = {
 	__newindex=function ()
 	end
@@ -2191,6 +2230,7 @@ setmetatable(cam, fucky_meta)
 setmetatable(fire, fucky_meta)
 setmetatable(hook, fucky_meta)
 setmetatable(native, fucky_meta)
+setmetatable(web, fucky_meta)
 
 -- checked by 2take1script to make sure the script is loaded via 2take1
 -- they might replace this check in a future version, in which case, feel free to use the files from the "From 2Take1Menu" folder in this repository
