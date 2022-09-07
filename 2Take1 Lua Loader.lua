@@ -10,19 +10,20 @@ end
 
 local function init()
 	stand.action(stand.my_root(), "Reset State", {}, "", function()
-		-- reset stand runtime
 		util.dispatch_on_stop()
 		util.stop_all_threads()
-		util.keep_running()
-		util.clear_commands_and_event_handlers()
-		-- reset global vars to avoid scripts crying about already being loaded
-		for k, v in pairs(_G) do
-			if og_g_keys[k] == nil then
-				_G[k] = nil
+		util.create_thread(function()
+			util.clear_commands_and_event_handlers()			
+			-- reset global vars to avoid scripts crying about already being loaded
+			for k, v in pairs(_G) do
+				if og_g_keys[k] == nil then
+					_G[k] = nil
+				end
 			end
-		end
-		-- reinit
-		init()
+			-- reinit
+			util.keep_running()
+			init()
+		end)
 	end)
 
 	local settings_list = stand.list(stand.my_root(), "Settings", {}, "")
