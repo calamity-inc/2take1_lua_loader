@@ -826,7 +826,7 @@ menu = {
 	delete_thread = function()
 		notif_not_imp()
 	end,
-	is_trusted_mode_enabled = function ()
+	is_trusted_mode_enabled = function (trusted_flag)
 		return true
 	end,
 	get_version = function ()
@@ -2184,6 +2184,10 @@ web = {
 	get = function () return 0, "" end
 }
 
+eTrustedFlags = {
+	LUA_TRUST_NATIVES = 0, -- idk what the actual value is, but this isn't nil, so good enough
+}
+
 local fucky_meta = {
 	__newindex=function ()
 	end
@@ -2213,6 +2217,7 @@ setmetatable(fire, fucky_meta)
 setmetatable(hook, fucky_meta)
 setmetatable(native, fucky_meta)
 setmetatable(web, fucky_meta)
+setmetatable(eTrustedFlags, fucky_meta)
 
 -- checked by 2take1script to make sure the script is loaded via 2take1
 -- they might replace this check in a future version, in which case, feel free to use the files from the "From 2Take1Menu" folder in this repository
