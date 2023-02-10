@@ -2147,11 +2147,11 @@ native = {
 		native_invoker.begin_call()
 		for _, arg in ipairs(args) do
 			pluto_switch type(arg) do
-				pluto_case "int":
+				case "int":
 				native_invoker.push_arg_int(arg)
 				break
 
-				pluto_case "number":
+				case "number":
 				local i, f = math.modf(arg)
 				if f == 0 then
 					native_invoker.push_arg_int(arg)
@@ -2160,11 +2160,11 @@ native = {
 				end
 				break
 
-				pluto_case "boolean":
+				case "boolean":
 				native_invoker.push_arg_bool(arg)
 				break
 
-				pluto_default:
+				default:
 				error("Unsupported argument for native.call: " .. type(arg) .. " " .. tostring(arg))
 			end
 		end
