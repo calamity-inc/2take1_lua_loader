@@ -2152,11 +2152,13 @@ native = {
 				break
 
 				case "number":
-				local i, f = math.modf(arg)
-				if f == 0 then
-					native_invoker.push_arg_int(arg)
-				else
-					native_invoker.push_arg_float(arg)
+				do
+					local i, f = math.modf(arg)
+					if f == 0 then
+						native_invoker.push_arg_int(arg)
+					else
+						native_invoker.push_arg_float(arg)
+					end
 				end
 				break
 
