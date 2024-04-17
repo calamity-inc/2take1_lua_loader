@@ -830,7 +830,7 @@ menu = {
 		return true
 	end,
 	get_version = function ()
-		return "2.62.1"
+		return "2.106.0"
 	end
 }
 
@@ -2187,7 +2187,11 @@ web = {
 }
 
 eTrustedFlags = {
-	LUA_TRUST_NATIVES = 0, -- idk what the actual value is, but this isn't nil, so good enough
+    LUA_TRUST_STATS = 1,
+    LUA_TRUST_SCRIPT_VARS = 2,
+    LUA_TRUST_NATIVES = 4,
+    LUA_TRUST_HTTP = 8,
+    LUA_TRUST_MEMORY = 16,
 }
 
 local fucky_meta = {
