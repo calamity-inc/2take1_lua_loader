@@ -819,13 +819,11 @@ menu = {
 	create_thread = util.create_thread,
 	has_thread_finished = function (t)
 		if type(t) == "thread" then
-			return coroutine.status(t) == "dead"
+			return coroutine.status(t) == "dead" or not util.is_scheduled_in(t)
 		end
 		return true
 	end,
-	delete_thread = function()
-		notif_not_imp()
-	end,
+	delete_thread = util.shoot_thread,
 	is_trusted_mode_enabled = function (trusted_flag)
 		return true
 	end,
