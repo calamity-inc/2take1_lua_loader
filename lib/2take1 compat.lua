@@ -828,7 +828,7 @@ menu = {
 		return true
 	end,
 	get_version = function ()
-		return "2.108.0"
+		return "2.110.0"
 	end
 }
 
